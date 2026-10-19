@@ -1,68 +1,28 @@
-{
+﻿{
   "id": 10,
   "width": 4,
   "height": 3,
   "target_words": [
     {
-      "word": "END",
+      "word": "POD",
       "type": 0
     },
     {
-      "word": "DATE",
+      "word": "PUN",
       "type": 0
     },
     {
-      "word": "DISC",
+      "word": "HELD",
       "type": 0
     },
     {
-      "word": "JACK",
+      "word": "BUBBLE",
       "type": 0
     }
   ],
   "extra_words": [
-    {
-      "word": "ATE",
-      "type": 0
-    },
-    {
-      "word": "CAD",
-      "type": 0
-    },
-    {
-      "word": "DIS",
-      "type": 0
-    },
-    {
-      "word": "ETA",
-      "type": 0
-    },
-    {
-      "word": "NET",
-      "type": 0
-    },
-    {
-      "word": "TAD",
-      "type": 0
-    },
-    {
-      "word": "TEA",
-      "type": 0
-    },
-    {
-      "word": "TEN",
-      "type": 0
-    },
-    {
-      "word": "SCAD",
-      "type": 0
-    },
-    {
-      "word": "TEND",
-      "type": 0
-    }
   ],
-  "letters": "ISCK,DJAD,ATEN",
-  "counts": "1121,2111,1121",
-  "obstacles": []
+  "letters": "BBLE,UODH,BPUN",
+  "obstacles": [
+  ]
 }

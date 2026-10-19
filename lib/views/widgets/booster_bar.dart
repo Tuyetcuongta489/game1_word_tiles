@@ -17,6 +17,8 @@ class BoosterBar extends StatefulWidget {
   final bool isHintSpotlighted;
   final bool isRocketSpotlighted;
   final GlobalKey<ExtraWordsButtonState>? extraWordsBtnKey;
+  final GlobalKey? hintBtnKey;
+  final GlobalKey? rocketBtnKey;
 
   const BoosterBar({
     super.key,
@@ -28,6 +30,8 @@ class BoosterBar extends StatefulWidget {
     this.isHintSpotlighted = false,
     this.isRocketSpotlighted = false,
     this.extraWordsBtnKey,
+    this.hintBtnKey,
+    this.rocketBtnKey,
   });
 
   @override
@@ -149,11 +153,24 @@ class _BoosterBarState extends State<BoosterBar> {
   Widget _buildHintBooster({required int hintCount}) {
     final controller = widget.controller;
     final isSpotlighted = widget.isHintSpotlighted;
+    final isLevel5Free = controller.levelNumber == 5 && !GameStorage.hasUsedLevel5FreeHint();
+    final isFree = isSpotlighted || isLevel5Free;
     final isInfinite = GameStorage.isInfiniteBoostersEnabled();
-    final hasBooster = isInfinite || hintCount > 0;
+    final hasBooster = isFree || isInfinite || hintCount > 0;
 
     return BouncyButton(
+      key: widget.hintBtnKey,
       onTap: () async {
+        if (isFree) {
+          if (widget.onHintTap != null && isSpotlighted) {
+            widget.onHintTap?.call();
+          } else {
+            GameStorage.setLevel5FreeHintUsed(true);
+            controller.useHint(isTutorialFree: true);
+            _rebuild();
+          }
+          return;
+        }
         widget.onHintTap?.call();
         if (hasBooster) {
           controller.useHint();
@@ -209,14 +226,27 @@ class _BoosterBarState extends State<BoosterBar> {
               ),
             ),
 
-            // Attached badge in bottom-right corner:
-            Positioned(
-              bottom: 2.h,
-              right: 0,
-              child: hasBooster
-                  ? OrangeCountBadge(count: hintCount, label: isInfinite ? '∞' : null)
-                  : const GreenPlusBadge(),
-            ),
+            // Attached badge: Green FREE badge centered at bottom when isFree, otherwise count badge in bottom-right corner
+            if (isFree)
+              Positioned(
+                bottom: 2.h,
+                left: 0,
+                right: 0,
+                child: const Center(
+                  child: GreenFreeBadge(),
+                ),
+              )
+            else
+              Positioned(
+                bottom: 2.h,
+                right: 0,
+                child: hasBooster
+                    ? OrangeCountBadge(
+                        count: hintCount,
+                        label: isInfinite ? '∞' : null,
+                      )
+                    : const GreenPlusBadge(),
+              ),
 
             // Downward arrow pointer positioned directly above the Hint icon
             if (isSpotlighted)
@@ -235,11 +265,24 @@ class _BoosterBarState extends State<BoosterBar> {
   Widget _buildRocketBooster({required int rocketCount}) {
     final controller = widget.controller;
     final isSpotlighted = widget.isRocketSpotlighted;
+    final isLevel7Free = controller.levelNumber == 7 && !GameStorage.hasUsedLevel7FreeRocket();
+    final isFree = isSpotlighted || isLevel7Free;
     final isInfinite = GameStorage.isInfiniteBoostersEnabled();
-    final hasBooster = isInfinite || rocketCount > 0;
+    final hasBooster = isFree || isInfinite || rocketCount > 0;
 
     return BouncyButton(
+      key: widget.rocketBtnKey,
       onTap: () async {
+        if (isFree) {
+          if (widget.onRocketTap != null && isSpotlighted) {
+            widget.onRocketTap?.call();
+          } else {
+            GameStorage.setLevel7FreeRocketUsed(true);
+            controller.useRocket(isTutorialFree: true);
+            _rebuild();
+          }
+          return;
+        }
         widget.onRocketTap?.call();
         if (hasBooster) {
           controller.useRocket();
@@ -301,14 +344,27 @@ class _BoosterBarState extends State<BoosterBar> {
               ),
             ),
 
-            // Attached badge in bottom-right corner:
-            Positioned(
-              bottom: 2.h,
-              right: 0,
-              child: hasBooster
-                  ? OrangeCountBadge(count: rocketCount, label: isInfinite ? '∞' : null)
-                  : const GreenPlusBadge(),
-            ),
+            // Attached badge: Green FREE badge centered at bottom when isFree, otherwise count badge in bottom-right corner
+            if (isFree)
+              Positioned(
+                bottom: 2.h,
+                left: 0,
+                right: 0,
+                child: const Center(
+                  child: GreenFreeBadge(),
+                ),
+              )
+            else
+              Positioned(
+                bottom: 2.h,
+                right: 0,
+                child: hasBooster
+                    ? OrangeCountBadge(
+                        count: rocketCount,
+                        label: isInfinite ? '∞' : null,
+                      )
+                    : const GreenPlusBadge(),
+              ),
 
             // Downward arrow pointer positioned directly above the Rocket icon
             if (isSpotlighted)
@@ -607,6 +663,74 @@ class OrangeCountBadge extends StatelessWidget {
             Shadow(offset: Offset(0.8, 0.8), color: Color(0xFF1E3A6E)),
             Shadow(offset: Offset(0, 1.2), color: Color(0xFF1E3A6E)),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 3D Vector-rendered Green Pill Badge for FREE tutorial booster prompt (centered at bottom).
+class GreenFreeBadge extends StatelessWidget {
+  final double size;
+
+  const GreenFreeBadge({
+    super.key,
+    this.size = 25.0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: size.r,
+      padding: EdgeInsets.symmetric(horizontal: 5.5.w),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(size.r / 2),
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFF5CEB38), // top sunny bright green
+            Color(0xFF28A811), // bottom rich cartoon green
+          ],
+        ),
+        border: Border.all(
+          color: const Color(0xFF14530A), // dark green cartoon outline
+          width: 1.2,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0xFF0E3D07), // 3D bottom bevel
+            offset: Offset(0, 1.5),
+            blurRadius: 0,
+          ),
+          BoxShadow(
+            color: Color(0x33000000),
+            offset: Offset(0, 2),
+            blurRadius: 2.5,
+          ),
+        ],
+      ),
+      child: Center(
+        widthFactor: 1.0,
+        heightFactor: 1.0,
+        child: Text(
+          'FREE',
+          maxLines: 1,
+          softWrap: false,
+          style: AppTypography.font(
+            fontSize: (size * 0.46).sp,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 0.2,
+            height: 1.0,
+            shadows: const [
+              Shadow(offset: Offset(-0.8, -0.8), color: Color(0xFF0E3D07)),
+              Shadow(offset: Offset(0.8, -0.8), color: Color(0xFF0E3D07)),
+              Shadow(offset: Offset(-0.8, 0.8), color: Color(0xFF0E3D07)),
+              Shadow(offset: Offset(0.8, 0.8), color: Color(0xFF0E3D07)),
+              Shadow(offset: Offset(0, 1.2), color: Color(0xFF0E3D07)),
+            ],
+          ),
         ),
       ),
     );

@@ -29,7 +29,7 @@ Pod::Spec.new do |s|
 
   # Glue plugin (Classes/) + lõi SDK (FGSDK/) — cùng compile vào pod của plugin.
   s.source_files        = 'Classes/**/*.{h,mm}', 'FGSDK/**/*.{h,mm}'
-  s.public_header_files  = 'Classes/**/*.h', 'FGSDK/**/*.h'
+  s.public_header_files  = 'Classes/**/*.h'
 
   s.dependency 'Flutter'
 
@@ -38,6 +38,7 @@ Pod::Spec.new do |s|
     'CLANG_CXX_LANGUAGE_STANDARD' => 'c++17',
     'CLANG_CXX_LIBRARY'           => 'libc++',
     'DEFINES_MODULE'              => 'YES',
+    'HEADER_SEARCH_PATHS'         => '"${PODS_TARGET_SRCROOT}/FGSDK"',
     # Flutter build cho iOS device: loại i386
     'VALID_ARCHS[sdk=iphonesimulator*]' => 'x86_64 arm64',
   }

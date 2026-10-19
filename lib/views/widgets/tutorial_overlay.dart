@@ -456,6 +456,37 @@ class SwipeTutorialCard extends StatelessWidget {
   }
 }
 
+/// Modal Dialog explaining swipe guidance with explicit "Got it!" button (Level 1)
+/// Only dismisses when "Got it" button is tapped; tapping outside does NOT dismiss,
+/// and touches outside pass through to the board so the user can swipe freely.
+class Level1SwipeTutorialModal extends StatelessWidget {
+  final List<InlineSpan> spans;
+  final VoidCallback onDismiss;
+
+  const Level1SwipeTutorialModal({
+    super.key,
+    required this.spans,
+    required this.onDismiss,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: const Alignment(0, -0.16),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {}, // Absorb taps inside speech bubble so they don't trigger anything underneath
+        child: TutorialSpeechBubble(
+          spans: spans,
+          actionButton: TutorialGotItButton(
+            onTap: onDismiss,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Modal Dialog explaining letter usage count with spotlight emphasis on the real board tile (Level 2)
 class TileCountTutorialModal extends StatelessWidget {
   final String? sampleLetter;
@@ -639,48 +670,68 @@ class _TutorialArrowCustomPainter extends CustomPainter {
 /// Level 5 Hint Booster Tutorial Overlay (matching screenshot 2)
 class HintBoosterTutorialOverlay extends StatelessWidget {
   final VoidCallback onDismiss;
+  final VoidCallback? onBoosterTap;
+  final GlobalKey? boosterBtnKey;
 
-  const HintBoosterTutorialOverlay({super.key, required this.onDismiss});
+  const HintBoosterTutorialOverlay({
+    super.key,
+    required this.onDismiss,
+    this.onBoosterTap,
+    this.boosterBtnKey,
+  });
+
+  bool _isInsideBooster(BuildContext context, Offset globalPos) {
+    if (boosterBtnKey != null) {
+      final RenderBox? box = boosterBtnKey!.currentContext?.findRenderObject() as RenderBox?;
+      if (box != null && box.hasSize) {
+        final rect = box.localToGlobal(Offset.zero) & box.size;
+        return rect.inflate(8.0).contains(globalPos);
+      }
+    }
+    // Fallback when boosterBtnKey is not attached (e.g. standalone widget test)
+    final size = MediaQuery.sizeOf(context);
+    final isBottom = globalPos.dy >= size.height - 120.h;
+    final isCenterOrTestX = (globalPos.dx - size.width / 2).abs() <= 70.w || (globalPos.dx >= 150 && globalPos.dx <= 250);
+    return isBottom && isCenterOrTestX;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () async {
-        if (!RemoteConfigService.tutorialTapOutsideClose) {
-          debugPrint('[TutorialOverlay] Tap outside ignored: tutorialTapOutsideClose is false');
-          return;
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerUp: (PointerUpEvent event) async {
+        if (_isInsideBooster(context, event.position)) {
+          debugPrint('[HintTutorial] Tap directly on Hint booster button');
+          onBoosterTap?.call();
+        } else {
+          debugPrint('[HintTutorial] Tap outside Hint button -> dismissing tutorial, keeping Free');
+          await GameStorage.setHintTutorialShown(true);
+          onDismiss();
         }
-        debugPrint('[TutorialOverlay] Tap outside: dismissing hint tutorial overlay');
-        await GameStorage.setHintTutorialShown(true);
-        onDismiss();
       },
       child: Container(
         color: Colors.transparent,
         width: double.infinity,
         height: double.infinity,
         alignment: const Alignment(0, -0.18),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () {}, // Prevent taps inside the bubble from dismissing
-          child: TutorialSpeechBubble(
-            spans: const [
-              TextSpan(text: 'If you get stuck\ntry tapping '),
-              TextSpan(
-                text: '“Hint Button”',
-                style: TextStyle(
-                  color: Color(0xFF8F34D0),
-                  fontWeight: FontWeight.w900,
-                ),
+        child: TutorialSpeechBubble(
+          spans: const [
+            TextSpan(text: 'If you get stuck\ntry tapping '),
+            TextSpan(
+              text: '“Hint Button”',
+              style: TextStyle(
+                color: Color(0xFF8F34D0),
+                fontWeight: FontWeight.w900,
               ),
-              TextSpan(text: '.'),
-            ],
-            actionButton: TutorialGotItButton(
-              onTap: () async {
-                await GameStorage.setHintTutorialShown(true);
-                onDismiss();
-              },
             ),
+            TextSpan(text: '.'),
+          ],
+          actionButton: TutorialGotItButton(
+            onTap: () async {
+              debugPrint('[HintTutorial] Got it button tapped -> dismissing tutorial, keeping Free');
+              await GameStorage.setHintTutorialShown(true);
+              onDismiss();
+            },
           ),
         ),
       ),
@@ -742,48 +793,68 @@ class ExtraWordsTutorialOverlay extends StatelessWidget {
 /// Level 7 Rocket Booster Tutorial Overlay
 class RocketBoosterTutorialOverlay extends StatelessWidget {
   final VoidCallback onDismiss;
+  final VoidCallback? onBoosterTap;
+  final GlobalKey? boosterBtnKey;
 
-  const RocketBoosterTutorialOverlay({super.key, required this.onDismiss});
+  const RocketBoosterTutorialOverlay({
+    super.key,
+    required this.onDismiss,
+    this.onBoosterTap,
+    this.boosterBtnKey,
+  });
+
+  bool _isInsideBooster(BuildContext context, Offset globalPos) {
+    if (boosterBtnKey != null) {
+      final RenderBox? box = boosterBtnKey!.currentContext?.findRenderObject() as RenderBox?;
+      if (box != null && box.hasSize) {
+        final rect = box.localToGlobal(Offset.zero) & box.size;
+        return rect.inflate(8.0).contains(globalPos);
+      }
+    }
+    // Fallback when boosterBtnKey is not attached (e.g. standalone widget test)
+    final size = MediaQuery.sizeOf(context);
+    final isBottom = globalPos.dy >= size.height - 120.h;
+    final isRight = globalPos.dx >= size.width / 2;
+    return isBottom && isRight;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () async {
-        if (!RemoteConfigService.tutorialTapOutsideClose) {
-          debugPrint('[TutorialOverlay] Tap outside ignored: tutorialTapOutsideClose is false');
-          return;
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerUp: (PointerUpEvent event) async {
+        if (_isInsideBooster(context, event.position)) {
+          debugPrint('[RocketTutorial] Tap directly on Rocket booster button');
+          onBoosterTap?.call();
+        } else {
+          debugPrint('[RocketTutorial] Tap outside Rocket button -> dismissing tutorial, keeping Free');
+          await GameStorage.setRocketTutorialShown(true);
+          onDismiss();
         }
-        debugPrint('[TutorialOverlay] Tap outside: dismissing rocket tutorial overlay');
-        await GameStorage.setRocketTutorialShown(true);
-        onDismiss();
       },
       child: Container(
         color: Colors.transparent,
         width: double.infinity,
         height: double.infinity,
         alignment: const Alignment(0, -0.18),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () {}, // Prevent taps inside the bubble from dismissing
-          child: TutorialSpeechBubble(
-            spans: const [
-              TextSpan(text: 'Blast words away\nby tapping '),
-              TextSpan(
-                text: '“Rocket”',
-                style: TextStyle(
-                  color: Color(0xFF8F34D0),
-                  fontWeight: FontWeight.w900,
-                ),
+        child: TutorialSpeechBubble(
+          spans: const [
+            TextSpan(text: 'Blast words away\nby tapping '),
+            TextSpan(
+              text: '“Rocket”',
+              style: TextStyle(
+                color: Color(0xFF8F34D0),
+                fontWeight: FontWeight.w900,
               ),
-              TextSpan(text: '!'),
-            ],
-            actionButton: TutorialGotItButton(
-              onTap: () async {
-                await GameStorage.setRocketTutorialShown(true);
-                onDismiss();
-              },
             ),
+            TextSpan(text: '!'),
+          ],
+          actionButton: TutorialGotItButton(
+            onTap: () async {
+              debugPrint('[RocketTutorial] Got it button tapped -> dismissing tutorial, keeping Free');
+              await GameStorage.setRocketTutorialShown(true);
+              onDismiss();
+            },
           ),
         ),
       ),

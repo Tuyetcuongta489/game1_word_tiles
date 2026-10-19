@@ -1,100 +1,40 @@
-{
+﻿{
   "id": 6,
   "width": 3,
   "height": 3,
   "target_words": [
     {
-      "word": "LOT",
+      "word": "EYE",
       "type": 0
     },
     {
-      "word": "OIL",
+      "word": "FEE",
       "type": 0
     },
     {
-      "word": "OLD",
+      "word": "LAD",
       "type": 0
     },
     {
-      "word": "ATOM",
+      "word": "FEED",
       "type": 0
     },
     {
-      "word": "FILL",
+      "word": "PEDAL",
       "type": 0
     }
   ],
   "extra_words": [
     {
-      "word": "FIL",
-      "type": 0
+      "word": "LADE",
+      "type": 1
     },
     {
-      "word": "ILL",
-      "type": 0
-    },
-    {
-      "word": "MAT",
-      "type": 0
-    },
-    {
-      "word": "MOL",
-      "type": 0
-    },
-    {
-      "word": "MOT",
-      "type": 0
-    },
-    {
-      "word": "TAM",
-      "type": 0
-    },
-    {
-      "word": "TOM",
-      "type": 0
-    },
-    {
-      "word": "IOTA",
-      "type": 0
-    },
-    {
-      "word": "LOTA",
-      "type": 0
-    },
-    {
-      "word": "MOIL",
-      "type": 0
-    },
-    {
-      "word": "MOLD",
-      "type": 0
-    },
-    {
-      "word": "MOLL",
-      "type": 0
-    },
-    {
-      "word": "TOIL",
-      "type": 0
-    },
-    {
-      "word": "TOLD",
-      "type": 0
-    },
-    {
-      "word": "TOLL",
-      "type": 0
-    },
-    {
-      "word": "ATOLL",
-      "type": 0
-    },
-    {
-      "word": "FILLO",
+      "word": "PEE",
       "type": 0
     }
   ],
-  "letters": "LLD,IOT,FMA",
-  "counts": "231,242,111",
-  "obstacles": []
+  "letters": "PED,YEA,EFL",
+  "obstacles": [
+  ]
 }

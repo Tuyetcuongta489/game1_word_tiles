@@ -15,7 +15,9 @@ import 'game_screen.dart';
 import 'widgets/bouncy_button.dart';
 import 'widgets/pressable_3d_button.dart';
 import 'widgets/settings_dialog.dart';
+import 'widgets/remove_ads_dialog.dart';
 import 'shop_screen.dart';
+import '../services/no_ads_trigger_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool isFirstSessionStart;
@@ -33,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   String _language = 'english';
   int _currentLevelIndex = 0;
   bool _isLoading = true;
+  bool _hasCheckedStartupPopups = false;
 
   @override
   void initState() {
@@ -40,6 +43,36 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     GameStorage.languageNotifier.addListener(_onLanguageChanged);
     _loadState(showBanner: !widget.isFirstSessionStart);
     AudioManager.startBgm();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkStartupPopups();
+    });
+  }
+
+  void _checkStartupPopups() {
+    if (!mounted || _hasCheckedStartupPopups) return;
+    _hasCheckedStartupPopups = true;
+
+    final currentLevelNumber = _currentLevelIndex + 1;
+    if (NoAdsTriggerService.shouldShowCase1(currentLevelNumber)) {
+      RemoveAdsDialog.show(
+        context,
+        level: currentLevelNumber,
+        location: 'home_startup',
+        onClosed: () {
+          if (mounted) {
+            _loadState(showBanner: false);
+            _checkStarterPackPopup();
+          }
+        },
+      );
+    } else {
+      _checkStarterPackPopup();
+    }
+  }
+
+  void _checkStarterPackPopup() {
+    // Reserved for Starter Pack popup if introduced in the future
   }
 
   void _onLanguageChanged() {
@@ -196,8 +229,60 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _buildCoinCapsule(),
-          _buildSettingsButton(),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ValueListenableBuilder<bool>(
+                valueListenable: GameStorage.noAdsNotifier,
+                builder: (context, isPurchased, _) {
+                  if (isPurchased) return const SizedBox.shrink();
+                  return Padding(
+                    padding: EdgeInsets.only(right: 10.w),
+                    child: _buildNoAdsIconButton(),
+                  );
+                },
+              ),
+              _buildSettingsButton(),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNoAdsIconButton() {
+    return BouncyButton(
+      onTap: () {
+        AudioManager.playTileSelect(pitchIndex: 4);
+        RemoveAdsDialog.show(
+          context,
+          level: _currentLevelIndex + 1,
+          location: 'home_icon',
+          onClosed: () {
+            if (mounted) _loadState(showBanner: false);
+          },
+        );
+      },
+      child: Container(
+        width: 44.r,
+        height: 44.r,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFF1E2846).withValues(alpha: 0.5),
+          border: Border.all(color: Colors.white, width: 2.0),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x38000000),
+              offset: Offset(0, 2),
+              blurRadius: 4,
+            ),
+          ],
+        ),
+        padding: EdgeInsets.all(5.r),
+        child: Image.asset(
+          'assets/images/img_remove_ads.png',
+          fit: BoxFit.contain,
+        ),
       ),
     );
   }

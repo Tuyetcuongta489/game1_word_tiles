@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/services.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 import 'package:audioplayers/audioplayers.dart' as ap;
@@ -132,18 +133,19 @@ class AudioManager {
     }
   }
 
-  static void playWordMatch() {
+  static void playWordMatch({int combo = 1}) {
     if (GameStorage.getSoundEnabled()) {
+      final double volume = (0.90 + min((combo - 1) * 0.03, 0.10)).clamp(0.0, 1.0);
       if (_useSoloud && _soloudWordMatch != null) {
         try {
-          SoLoud.instance.play(_soloudWordMatch!, volume: 0.90);
+          SoLoud.instance.play(_soloudWordMatch!, volume: volume);
         } catch (_) {}
       } else {
         try {
           _matchPlayer ??= ap.AudioPlayer(playerId: 'match_player');
           _matchPlayer?.play(
             ap.AssetSource('audio/word_match.wav'),
-            volume: 0.90,
+            volume: volume,
             mode: ap.PlayerMode.lowLatency,
           );
         } catch (_) {}
@@ -151,7 +153,11 @@ class AudioManager {
     }
     if (GameStorage.getHapticEnabled()) {
       try {
-        HapticFeedback.mediumImpact();
+        if (combo >= 3) {
+          HapticFeedback.heavyImpact();
+        } else {
+          HapticFeedback.mediumImpact();
+        }
       } catch (_) {}
     }
   }

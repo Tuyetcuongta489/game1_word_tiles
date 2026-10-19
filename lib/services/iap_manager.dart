@@ -15,8 +15,40 @@ class IapManager {
 
   static final Map<String, String> _priceCache = {};
   static final ValueNotifier<bool> isPricesLoaded = ValueNotifier<bool>(false);
+  static final ValueNotifier<int> pricesVersion = ValueNotifier<int>(0);
   static final List<StreamSubscription> _subscriptions = [];
   static bool _isInitialized = false;
+
+  /// Standard Apple Store Vietnam Pricing Tier mapping (USD -> VND)
+  static const Map<String, String> _vndProductIdMap = {
+    'com.fw.word.connect.puzzle.gold_1': '25.000 ₫',
+    'com.fw.word.connect.puzzle.starter_pack': '79.000 ₫',
+    'com.fw.word.connect.puzzle.no_ads': '149.000 ₫',
+    'com.fw.word.connect.puzzle.limited_pack': '149.000 ₫',
+    'com.fw.word.connect.puzzle.no_ads_bundle': '179.000 ₫',
+    'com.fw.word.connect.puzzle.gold_2': '199.000 ₫',
+    'com.fw.word.connect.puzzle.beginner_bundle': '379.000 ₫',
+    'com.fw.word.connect.puzzle.gold_3': '399.000 ₫',
+    'com.fw.word.connect.puzzle.master_bundle': '779.000 ₫',
+    'com.fw.word.connect.puzzle.gold_4': '779.000 ₫',
+    'com.fw.word.connect.puzzle.gold_5': '1.499.000 ₫',
+  };
+
+  static const Map<int, String> _vndCentsMap = {
+    99: '25.000 ₫',
+    199: '49.000 ₫',
+    299: '79.000 ₫',
+    399: '99.000 ₫',
+    499: '129.000 ₫',
+    599: '149.000 ₫',
+    699: '179.000 ₫',
+    799: '199.000 ₫',
+    999: '249.000 ₫',
+    1499: '379.000 ₫',
+    1599: '399.000 ₫',
+    2999: '779.000 ₫',
+    5599: '1.499.000 ₫',
+  };
 
   /// Initializes IAP listeners and checks for previously purchased non-consumables
   static Future<void> init() async {
@@ -72,29 +104,60 @@ class IapManager {
     }
   }
 
-  /// Queries native store for localized prices of all configured products
+  /// Queries native store for localized prices of all configured products in parallel
   static Future<void> refreshPrices() async {
     try {
-      for (final product in IapProduct.allProducts) {
-        if (product.isAdsReward) continue;
-        final price = await FGSDK.getProductPrice(product.productId);
-        if (price.isNotEmpty && price != '0') {
-          _priceCache[product.productId] = price;
-        }
+      bool anyUpdated = false;
+      await Future.wait(
+        IapProduct.allProducts.where((p) => !p.isAdsReward).map((product) async {
+          try {
+            final price = await FGSDK.getProductPrice(product.productId);
+            if (price.isNotEmpty && price != '0') {
+              if (_priceCache[product.productId] != price) {
+                _priceCache[product.productId] = price;
+                anyUpdated = true;
+              }
+            }
+          } catch (e) {
+            debugPrint('[IapManager] Error fetching price for ${product.productId}: $e');
+          }
+        }),
+      );
+
+      if (anyUpdated || !isPricesLoaded.value) {
+        isPricesLoaded.value = true;
+        pricesVersion.value++;
+        debugPrint('[IapManager] refreshPrices complete -> cached ${_priceCache.length} prices.');
       }
-      isPricesLoaded.value = true;
     } catch (e) {
       debugPrint('[IapManager] refreshPrices error: $e');
     }
   }
 
-  /// Gets localized price text with fallback to USD price text
+  /// Gets localized price text with fallback to locale-aware currency text
   static String getDisplayPrice(IapProduct product) {
     if (product.isAdsReward) return 'Free';
     final cached = _priceCache[product.productId];
-    if (cached != null && cached.isNotEmpty) {
+    if (cached != null && cached.isNotEmpty && cached != '0') {
       return cached;
     }
+    return _getFallbackPrice(product);
+  }
+
+  /// Intelligent fallback when StoreKit hasn't loaded yet or device is offline.
+  /// Translates USD tier to Vietnam Dong (₫) if user selected Vietnamese or device locale is VN.
+  static String _getFallbackPrice(IapProduct product) {
+    try {
+      final lang = GameStorage.getSelectedLanguage().toLowerCase();
+      final systemLocale = WidgetsBinding.instance.platformDispatcher.locale.languageCode.toLowerCase();
+      final isVietnamese = lang == 'vi' || systemLocale == 'vi';
+
+      if (isVietnamese) {
+        final vnd = _vndProductIdMap[product.productId] ??
+            _vndCentsMap[(product.priceUsd * 100).round()];
+        if (vnd != null) return vnd;
+      }
+    } catch (_) {}
     return product.defaultPriceText;
   }
 

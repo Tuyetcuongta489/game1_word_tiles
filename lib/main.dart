@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'services/ads_manager.dart';
 import 'services/analytics_service.dart';
+import 'services/analytics_toast.dart';
 import 'services/audio_manager.dart';
 import 'theme/app_theme.dart';
 import 'views/loading_screen.dart';
@@ -73,6 +74,7 @@ class _WordTilesAppState extends State<WordTilesApp> with WidgetsBindingObserver
       splitScreenMode: true,
       builder: (context, child) {
         return MaterialApp(
+          navigatorKey: AnalyticsToast.navigatorKey,
           title: 'Wordnect: Connect Words',
           debugShowCheckedModeBanner: false,
           theme: AppThemes.lightTheme,

@@ -8,7 +8,10 @@
 #import "../../util/FGMainThreadDispatcher.h"
 
 #if FACEBOOK_SDK_ENABLE
+#import <SafariServices/SafariServices.h>
+#import <AuthenticationServices/AuthenticationServices.h>
 #import <FBSDKCoreKit/FBSDKCoreKit.h>
+#import <FBSDKCoreKit/FBSDKCoreKit-Swift.h>
 #endif
 
 static NSString *const kFGFacebookTag = @"FGFacebook";

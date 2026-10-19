@@ -1,84 +1,32 @@
-{
+﻿{
   "id": 12,
   "width": 3,
   "height": 3,
   "target_words": [
     {
-      "word": "ICE",
+      "word": "FIT",
       "type": 0
     },
     {
-      "word": "MAN",
+      "word": "OUT",
       "type": 0
     },
     {
-      "word": "SEC",
+      "word": "SHE",
       "type": 0
     },
     {
-      "word": "ANTI",
+      "word": "FISH",
       "type": 0
     },
     {
-      "word": "NICE",
+      "word": "SHOUT",
       "type": 0
     }
   ],
   "extra_words": [
-    {
-      "word": "ANT",
-      "type": 0
-    },
-    {
-      "word": "NAM",
-      "type": 0
-    },
-    {
-      "word": "NIT",
-      "type": 0
-    },
-    {
-      "word": "SEN",
-      "type": 0
-    },
-    {
-      "word": "TIC",
-      "type": 0
-    },
-    {
-      "word": "TIN",
-      "type": 0
-    },
-    {
-      "word": "CINE",
-      "type": 0
-    },
-    {
-      "word": "ICES",
-      "type": 0
-    },
-    {
-      "word": "TINE",
-      "type": 0
-    },
-    {
-      "word": "ANTIC",
-      "type": 0
-    },
-    {
-      "word": "CINES",
-      "type": 0
-    },
-    {
-      "word": "TINES",
-      "type": 0
-    },
-    {
-      "word": "MANTIC",
-      "type": 0
-    }
   ],
-  "letters": "ANT,MCI,SEN",
-  "counts": "221,133,131",
-  "obstacles": []
+  "letters": "FIT,IOU,SHE",
+  "obstacles": [
+  ]
 }

@@ -1,72 +1,40 @@
-{
+﻿{
   "id": 7,
   "width": 4,
   "height": 2,
   "target_words": [
     {
-      "word": "ARE",
+      "word": "USE",
       "type": 0
     },
     {
-      "word": "CAR",
+      "word": "VAN",
       "type": 0
     },
     {
-      "word": "VAR",
+      "word": "SANE",
       "type": 0
     },
     {
-      "word": "CARE",
+      "word": "VASE",
       "type": 0
     },
     {
-      "word": "DISC",
+      "word": "HOUSE",
       "type": 0
     }
   ],
   "extra_words": [
     {
-      "word": "ACE",
+      "word": "SEN",
       "type": 0
     },
     {
-      "word": "DIS",
-      "type": 0
-    },
-    {
-      "word": "ERA",
-      "type": 0
-    },
-    {
-      "word": "REC",
-      "type": 0
-    },
-    {
-      "word": "VAC",
-      "type": 0
-    },
-    {
-      "word": "RACE",
-      "type": 0
-    },
-    {
-      "word": "RECS",
-      "type": 0
-    },
-    {
-      "word": "SCAR",
-      "type": 0
-    },
-    {
-      "word": "VACS",
-      "type": 0
-    },
-    {
-      "word": "SCARE",
-      "type": 0
+      "word": "VANE",
+      "type": 2
     }
   ],
-  "letters": "ECSI,RAVD",
-  "counts": "2311,4411",
-  "obstacles": []
+  "letters": "OUSE,HVAN",
+  "obstacles": [
+  ]
 }

@@ -31,6 +31,7 @@ import 'shop_screen.dart';
 import 'widgets/target_words_bar.dart';
 import 'widgets/tutorial_overlay.dart';
 import 'widgets/victory_dialog.dart';
+import 'widgets/remove_ads_dialog.dart';
 
 class GameScreen extends StatefulWidget {
   final String language;
@@ -47,8 +48,12 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
+  GlobalKey<TargetWordsBarState> _targetWordsKey = GlobalKey<TargetWordsBarState>();
   GlobalKey<BoardWidgetState> _boardKey = GlobalKey<BoardWidgetState>();
   GlobalKey<ExtraWordsButtonState> _extraWordsBtnKey = GlobalKey<ExtraWordsButtonState>();
+  GlobalKey _hintBtnKey = GlobalKey();
+  GlobalKey _rocketBtnKey = GlobalKey();
+  final ValueNotifier<double?> _popupMidYNotifier = ValueNotifier<double?>(null);
 
   GameController? _controller;
   late ConfettiController _confettiController;
@@ -60,6 +65,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   bool _lastIsWon = false;
   List<Point<int>>? _lastFailSafeHintPath;
   int _lastExtraFoundCount = 0;
+  int _dismissedLevel1Step = -1;
 
   bool _hasEndedThisLevel = false;
 
@@ -142,6 +148,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _logLevelEnd(reason: 'quit');
     WidgetsBinding.instance.removeObserver(this);
     _confettiController.dispose();
+    _popupMidYNotifier.dispose();
     _controller?.removeListener(_onGameControllerStateChanged);
     _controller?.dispose();
     super.dispose();
@@ -149,7 +156,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached || state == AppLifecycleState.inactive) {
+      _controller?.saveProgress();
       _logLevelBackground();
     } else if (state == AppLifecycleState.resumed) {
       _logLevelReopen();
@@ -215,6 +223,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _lastFailSafeHintPath = null;
       _lastExtraFoundCount = 0;
       _hasEndedThisLevel = false;
+      _dismissedLevel1Step = -1;
       _controller!.addListener(_onGameControllerStateChanged);
 
       final currentLvlNumber = _currentLevelIndex + 1;
@@ -244,17 +253,27 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   void _nextLevel() {
     setState(() {
       _currentLevelIndex++;
+      _targetWordsKey = GlobalKey<TargetWordsBarState>();
       _boardKey = GlobalKey<BoardWidgetState>();
       _extraWordsBtnKey = GlobalKey<ExtraWordsButtonState>();
+      _hintBtnKey = GlobalKey();
+      _rocketBtnKey = GlobalKey();
+      _popupMidYNotifier.value = null;
+      _dismissedLevel1Step = -1;
     });
     _loadGame(showLoading: false);
   }
 
   void _replayLevel() {
     _logLevelEnd(reason: 'restart');
+    GameStorage.clearLevelProgress(widget.language, _currentLevelIndex + 1);
     setState(() {
+      _targetWordsKey = GlobalKey<TargetWordsBarState>();
       _boardKey = GlobalKey<BoardWidgetState>();
       _extraWordsBtnKey = GlobalKey<ExtraWordsButtonState>();
+      _hintBtnKey = GlobalKey();
+      _rocketBtnKey = GlobalKey();
+      _popupMidYNotifier.value = null;
     });
     _loadGame();
   }
@@ -267,8 +286,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     GameStorage.setMaxUnlockedLevelIndex(widget.language, index);
     setState(() {
       _currentLevelIndex = index;
+      _targetWordsKey = GlobalKey<TargetWordsBarState>();
       _boardKey = GlobalKey<BoardWidgetState>();
       _extraWordsBtnKey = GlobalKey<ExtraWordsButtonState>();
+      _hintBtnKey = GlobalKey();
+      _rocketBtnKey = GlobalKey();
+      _popupMidYNotifier.value = null;
     });
     _loadGame();
   }
@@ -281,8 +304,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     GameStorage.setMaxUnlockedLevelIndex(widget.language, nextIndex);
     setState(() {
       _currentLevelIndex = nextIndex;
+      _targetWordsKey = GlobalKey<TargetWordsBarState>();
       _boardKey = GlobalKey<BoardWidgetState>();
       _extraWordsBtnKey = GlobalKey<ExtraWordsButtonState>();
+      _hintBtnKey = GlobalKey();
+      _rocketBtnKey = GlobalKey();
+      _popupMidYNotifier.value = null;
     });
     _loadGame(showLoading: false);
   }
@@ -312,7 +339,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     ExtraWordsDialog.show(
       context,
       controller: _controller!,
-      onUpdated: () => setState(() {}),
+      onUpdated: () {
+        if (mounted) setState(() {});
+      },
     );
   }
 
@@ -323,10 +352,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       GamePageRoute(
         child: ShopScreen(
           currentLevel: widget.levelIndex + 1,
-          onClosed: () => setState(() {}),
+          onClosed: () {
+            if (mounted) setState(() {});
+          },
         ),
       ),
-    ).then((_) => setState(() {}));
+    ).then((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   void _openDailyGift() {
@@ -334,7 +367,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     showGameDialog(
       context: context,
       builder: (_) => ShopDialog(
-        onUpdated: () => setState(() {}),
+        onUpdated: () {
+          if (mounted) setState(() {});
+        },
       ),
     );
   }
@@ -362,6 +397,28 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
   }
 
+  bool _isHandlingTutorialBooster = false;
+
+  void _onTutorialHintTap() {
+    if (_isHandlingTutorialBooster) return;
+    _isHandlingTutorialBooster = true;
+    GameStorage.setHintTutorialShown(true);
+    GameStorage.setLevel5FreeHintUsed(true);
+    _controller?.useHint(isTutorialFree: true);
+    if (mounted) setState(() {});
+    Future.microtask(() => _isHandlingTutorialBooster = false);
+  }
+
+  void _onTutorialRocketTap() {
+    if (_isHandlingTutorialBooster) return;
+    _isHandlingTutorialBooster = true;
+    GameStorage.setRocketTutorialShown(true);
+    GameStorage.setLevel7FreeRocketUsed(true);
+    _controller?.useRocket(isTutorialFree: true);
+    if (mounted) setState(() {});
+    Future.microtask(() => _isHandlingTutorialBooster = false);
+  }
+
   Widget _buildBackground() {
     final chapterNumber = _controller?.chapterNumber ?? 1;
     final bgPath = ChapterTheme.getImagePath(chapterNumber);
@@ -383,6 +440,25 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         ),
       ),
     );
+  }
+
+  void _updateDetectedMidY() {
+    if (!mounted) return;
+    final RenderBox? screenBox = context.findRenderObject() as RenderBox?;
+    if (screenBox == null || !screenBox.hasSize) return;
+
+    final targetBottomGlobal = _targetWordsKey.currentState?.getWordsBottomGlobal();
+    final boardTopGlobal = _boardKey.currentState?.getBoardCardTopGlobal();
+
+    if (targetBottomGlobal != null && boardTopGlobal != null && boardTopGlobal > targetBottomGlobal) {
+      final localTargetBottom = screenBox.globalToLocal(Offset(0, targetBottomGlobal)).dy;
+      final localBoardTop = screenBox.globalToLocal(Offset(0, boardTopGlobal)).dy;
+
+      final midY = (localTargetBottom + localBoardTop) / 2;
+      if (_popupMidYNotifier.value == null || (midY - _popupMidYNotifier.value!).abs() > 0.5) {
+        _popupMidYNotifier.value = midY;
+      }
+    }
   }
 
   bool _isTouchInsideBoard(Offset globalPos) {
@@ -424,10 +500,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       );
     }
 
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateDetectedMidY());
+
     final isLevel1Tut = !_controller!.isWon &&
         !GameStorage.isTutorialCompleted() &&
         _controller!.levelNumber == 1 &&
-        _controller!.solvedTargetWords.length < 2;
+        _controller!.solvedTargetWords.length < _controller!.level.targetWords.length &&
+        _controller!.solvedTargetWords.length < 2 &&
+        _dismissedLevel1Step < _controller!.solvedTargetWords.length;
 
     final isCountTut = !_controller!.isWon &&
         _controller!.levelNumber == 2 &&
@@ -463,6 +543,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       useSafeArea: false,
       background: _buildBackground(),
       onWillPop: () async {
+        _controller?.saveProgress();
         _logLevelEnd(reason: 'quit');
         if (Navigator.of(context).canPop()) {
           return true;
@@ -509,7 +590,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       ),
                       // TargetWordsBar with Side Buttons (Gift & Star Progress)
                       Expanded(
-                        flex: 7,
+                        flex: 5,
                         child: ValueListenableBuilder<bool>(
                           valueListenable: GameStorage.hideGameplayUINotifier,
                           builder: (context, hideUI, _) {
@@ -517,12 +598,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                               clipBehavior: Clip.none,
                               alignment: Alignment.center,
                               children: [
-                                Center(
-                                  child: SingleChildScrollView(
-                                    child: AnimatedOpacity(
-                                      opacity: isDarkScrimTut ? 0.20 : 1.0,
-                                      duration: const Duration(milliseconds: 250),
-                                      child: TargetWordsBar(controller: _controller!),
+                                Align(
+                                  alignment: Alignment.center,
+                                  child: AnimatedOpacity(
+                                    opacity: isDarkScrimTut ? 0.20 : 1.0,
+                                    duration: const Duration(milliseconds: 250),
+                                    child: TargetWordsBar(
+                                      key: _targetWordsKey,
+                                      controller: _controller!,
                                     ),
                                   ),
                                 ),
@@ -564,14 +647,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           },
                         ),
                       ),
-                      AnimatedOpacity(
-                        opacity: isDarkScrimTut ? 0.20 : 1.0,
-                        duration: const Duration(milliseconds: 250),
-                        child: _buildPreviewAndFeedback(),
-                      ),
                       // BoardWidget (Dimmed on Level 5 & Level 7 tutorials, full 100% on Level 1, 2, 4)
                       Expanded(
-                        flex: 5,
+                        flex: 6,
                         child: Center(
                           child: AnimatedOpacity(
                             opacity: (isHintTut || isExtraWordsTut || isRocketTut) ? 0.20 : 1.0,
@@ -603,19 +681,19 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                     onOpenExtraWords: _openExtraWords,
                                     onHintTap: () {
                                       if (isHintTut) {
-                                        GameStorage.setHintTutorialShown(true);
-                                        setState(() {});
+                                        _onTutorialHintTap();
                                       }
                                     },
                                     onRocketTap: () {
                                       if (isRocketTut) {
-                                        GameStorage.setRocketTutorialShown(true);
-                                        setState(() {});
+                                        _onTutorialRocketTap();
                                       }
                                     },
                                     isHintSpotlighted: isHintTut,
                                     isRocketSpotlighted: isRocketTut,
                                     extraWordsBtnKey: _extraWordsBtnKey,
+                                    hintBtnKey: _hintBtnKey,
+                                    rocketBtnKey: _rocketBtnKey,
                                   ),
                                 ),
                               ),
@@ -628,55 +706,62 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 ),
               ),
 
-              // Level 1: Centered Floating Swipe Tutorial Card (Step 1 & Step 2) with Tap-Outside-to-Dismiss
+              // Floating Preview & Feedback Popup dynamically centered between Target Words and Board Card
+              ValueListenableBuilder<double?>(
+                valueListenable: _popupMidYNotifier,
+                builder: (context, midY, _) {
+                  final effectiveMidY = midY ?? (MediaQuery.sizeOf(context).height * 0.44);
+                  return Positioned(
+                    top: effectiveMidY - 24.h,
+                    left: 0,
+                    right: 0,
+                    child: IgnorePointer(
+                      child: AnimatedOpacity(
+                        opacity: isDarkScrimTut ? 0.20 : 1.0,
+                        duration: const Duration(milliseconds: 250),
+                        child: _buildPreviewAndFeedback(),
+                      ),
+                    ),
+                  );
+                },
+              ),
+
+              // Level 1: Centered Floating Swipe Tutorial Modal (Step 1 & Step 2) with "Got it" Button
               if (isLevel1Tut)
                 Positioned.fill(
-                  child: Listener(
-                    behavior: HitTestBehavior.translucent,
-                    onPointerDown: (PointerDownEvent event) async {
-                      if (!RemoteConfigService.tutorialTapOutsideClose) {
-                        debugPrint('[Level1Tut] Tap outside ignored: tutorialTapOutsideClose is false');
-                        return;
-                      }
-                      if (_isTouchInsideBoard(event.position)) return;
-                      debugPrint('[Level1Tut] Tap outside board detected -> dismissing tutorial');
-                      await GameStorage.setTutorialCompleted(true);
-                      if (mounted) setState(() {});
+                  child: Builder(
+                    builder: (_) {
+                      final solvedCount = _controller!.solvedTargetWords.length;
+                      final nextWord = _controller!.getNextUnsolvedTargetWord() ?? 'SUN';
+                      return Level1SwipeTutorialModal(
+                        spans: solvedCount == 1
+                            ? [
+                                const TextSpan(text: 'You can go left, right, up, or down.\nSwipe the Word '),
+                                TextSpan(
+                                  text: '"$nextWord"',
+                                  style: const TextStyle(
+                                    color: Color(0xFFDD4C8E),
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const TextSpan(text: '.'),
+                              ]
+                            : [
+                                const TextSpan(text: 'Swipe the Word '),
+                                TextSpan(
+                                  text: '"$nextWord"',
+                                  style: const TextStyle(
+                                    color: Color(0xFFDD4C8E),
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                        onDismiss: () {
+                          _dismissedLevel1Step = solvedCount;
+                          if (mounted) setState(() {});
+                        },
+                      );
                     },
-                    child: Builder(
-                      builder: (_) {
-                        final solvedCount = _controller!.solvedTargetWords.length;
-                        final nextWord = _controller!.getNextUnsolvedTargetWord() ?? 'SUN';
-                        return SwipeTutorialCard(
-                          spans: solvedCount == 1
-                              ? [
-                                  const TextSpan(text: 'You can go left, right, up, or down.\nSwipe the Word '),
-                                  TextSpan(
-                                    text: '"$nextWord"',
-                                    style: const TextStyle(
-                                      color: Color(0xFFDD4C8E),
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                  const TextSpan(text: '.'),
-                                ]
-                              : [
-                                  const TextSpan(text: 'Swipe the Word '),
-                                  TextSpan(
-                                    text: '"$nextWord"',
-                                    style: const TextStyle(
-                                      color: Color(0xFFDD4C8E),
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                ],
-                          onDismiss: () async {
-                            await GameStorage.setTutorialCompleted(true);
-                            if (mounted) setState(() {});
-                          },
-                        );
-                      },
-                    ),
                   ),
                 ),
 
@@ -728,6 +813,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 Positioned.fill(
                   child: HintBoosterTutorialOverlay(
                     onDismiss: () => setState(() {}),
+                    onBoosterTap: _onTutorialHintTap,
+                    boosterBtnKey: _hintBtnKey,
                   ),
                 ),
 
@@ -744,6 +831,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 Positioned.fill(
                   child: RocketBoosterTutorialOverlay(
                     onDismiss: () => setState(() {}),
+                    onBoosterTap: _onTutorialRocketTap,
+                    boosterBtnKey: _rocketBtnKey,
                   ),
                 ),
 
@@ -830,19 +919,67 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     ),
                   ),
 
-                  // 3. Right slot: Settings Button (Flex 3, right-aligned)
+                  // 3. Right slot: No Ads + Settings Buttons (Flex 3, right-aligned)
                   Expanded(
                     flex: 3,
                     child: Align(
                       alignment: Alignment.centerRight,
                       child: shouldShowIcons
-                          ? BouncyButton(
-                              onTap: _openSettings,
-                              child: Image.asset(
-                                'assets/icons/icon_setting.webp',
-                                width: 40.r,
-                                height: 40.r,
-                              ),
+                          ? Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ValueListenableBuilder<bool>(
+                                  valueListenable: GameStorage.noAdsNotifier,
+                                  builder: (context, isPurchased, _) {
+                                    if (isPurchased) return const SizedBox.shrink();
+                                    return Padding(
+                                      padding: EdgeInsets.only(right: 8.w),
+                                      child: BouncyButton(
+                                        onTap: () {
+                                          AudioManager.playTileSelect(pitchIndex: 4);
+                                          RemoveAdsDialog.show(
+                                            context,
+                                            level: _controller?.levelNumber ?? (widget.levelIndex + 1),
+                                            location: 'ingame_icon',
+                                            onClosed: () {
+                                              if (mounted) setState(() {});
+                                            },
+                                          );
+                                        },
+                                        child: Container(
+                                          width: 40.r,
+                                          height: 40.r,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: const Color(0xFF1E2846).withValues(alpha: 0.5),
+                                            border: Border.all(color: Colors.white, width: 1.8),
+                                            boxShadow: const [
+                                              BoxShadow(
+                                                color: Color(0x38000000),
+                                                offset: Offset(0, 2),
+                                                blurRadius: 4,
+                                              ),
+                                            ],
+                                          ),
+                                          padding: EdgeInsets.all(4.r),
+                                          child: Image.asset(
+                                            'assets/images/img_remove_ads.png',
+                                            fit: BoxFit.contain,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                BouncyButton(
+                                  onTap: _openSettings,
+                                  child: Image.asset(
+                                    'assets/icons/icon_setting.webp',
+                                    width: 40.r,
+                                    height: 40.r,
+                                  ),
+                                ),
+                              ],
                             )
                           : const SizedBox.shrink(),
                     ),
@@ -1016,6 +1153,61 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     );
   }
 
+  ({List<Color> gradient, Color bevel}) _getFeedbackPillColors(Color baseColor, ChapterTheme theme) {
+    if (baseColor == const Color(0xFF10B981)) {
+      // Tier 1 Emerald Mint
+      return (
+        gradient: const [Color(0xFF34D399), Color(0xFF059669)],
+        bevel: const Color(0xFF065F46),
+      );
+    } else if (baseColor == const Color(0xFF2563EB)) {
+      // Tier 2 Ocean Blue
+      return (
+        gradient: const [Color(0xFF60A5FA), Color(0xFF1D4ED8)],
+        bevel: const Color(0xFF1E3A8A),
+      );
+    } else if (baseColor == const Color(0xFF7C3AED)) {
+      // Tier 3 Royal Violet
+      return (
+        gradient: const [Color(0xFFA78BFA), Color(0xFF6D28D9)],
+        bevel: const Color(0xFF4C1D95),
+      );
+    } else if (baseColor == const Color(0xFFEA580C)) {
+      // Tier 4 Vivid Orange
+      return (
+        gradient: const [Color(0xFFFB923C), Color(0xFFC2410C)],
+        bevel: const Color(0xFF7C2D12),
+      );
+    } else if (baseColor == const Color(0xFFE11D48)) {
+      // Tier 5 Rose Ruby
+      return (
+        gradient: const [Color(0xFFFB7185), Color(0xFFBE123C)],
+        bevel: const Color(0xFF881337),
+      );
+    } else if (baseColor == Colors.amber || baseColor == const Color(0xFFFFD54F) || baseColor == Colors.amberAccent) {
+      // Amber / Warning / Extra Words
+      return (
+        gradient: const [Color(0xFFFFEE58), Color(0xFFFFA000)],
+        bevel: const Color(0xFFB45309),
+      );
+    } else if (baseColor == Colors.red ||
+        baseColor == Colors.redAccent ||
+        baseColor == Colors.redAccent.shade100 ||
+        baseColor == const Color(0xFFEF4444)) {
+      // Error / Not on board Red
+      return (
+        gradient: const [Color(0xFFF87171), Color(0xFFDC2626)],
+        bevel: const Color(0xFF991B1B),
+      );
+    } else {
+      // Default to chapter theme colors
+      return (
+        gradient: [baseColor.withValues(alpha: 0.95), baseColor],
+        bevel: theme.bevelColor,
+      );
+    }
+  }
+
   Widget _buildPreviewAndFeedback() {
     return ListenableBuilder(
       listenable: _controller!,
@@ -1025,55 +1217,34 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         final theme = _controller!.chapterTheme;
         final feedbackColor = _controller!.feedbackColor ?? theme.primaryColor;
 
-        if (feedback != null) {
-          return Container(
-            height: 52.h,
-            alignment: Alignment.center,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-              decoration: BoxDecoration(
-                color: feedbackColor,
-                borderRadius: BorderRadius.circular(16.r),
-                border: Border.all(color: AppColors.borderSubtle, width: 1.5),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0xFFE8DAC8),
-                    offset: Offset(0, 1.5),
-                    blurRadius: 0,
-                  ),
-                ],
-              ),
-              child: Text(
-                feedback,
-                style: AppTypography.font(
-                  fontSize: 15.sp,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                  letterSpacing: 1.0,
-                ),
-              ),
-            )
-                .animate()
-                .scale(duration: 150.ms, curve: Curves.easeOutBack)
-                .shake(duration: 300.ms),
-          );
-        }
-
+        // 1. Live word preview while actively dragging/swiping (Highest priority, zero delay)
         if (word.isNotEmpty) {
           return Container(
-            height: 52.h,
+            height: 48.h,
             alignment: Alignment.center,
             child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
+              padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 6.h),
               decoration: BoxDecoration(
-                color: theme.primaryColor,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    theme.primaryColor.withValues(alpha: 0.95),
+                    theme.primaryColor,
+                  ],
+                ),
                 borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(color: theme.borderColor, width: 2.0),
+                border: Border.all(color: Colors.white, width: 1.8),
                 boxShadow: [
                   BoxShadow(
                     color: theme.bevelColor,
                     offset: const Offset(0, 2.5),
                     blurRadius: 0,
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.20),
+                    offset: const Offset(0, 3.0),
+                    blurRadius: 4,
                   ),
                 ],
               ),
@@ -1082,15 +1253,167 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 style: AppTypography.font(
                   fontSize: 18.sp,
                   fontWeight: FontWeight.w900,
-                  color: theme.textColor,
+                  color: Colors.white,
                   letterSpacing: 2.0,
+                  shadows: const [
+                    Shadow(
+                      color: Colors.black38,
+                      offset: Offset(0, 1.2),
+                      blurRadius: 2,
+                    ),
+                  ],
                 ),
               ),
             ).animate().scale(duration: 100.ms, curve: Curves.easeOut),
           );
         }
 
-        return SizedBox(height: 52.h);
+        // 2. Feedback popup after swipe (Combo Praise / Not on Board / Already Found)
+        if (feedback != null) {
+          final isCombo = _controller!.feedbackCombo != null && _controller!.feedbackCombo! >= 1;
+          final praise = _controller!.feedbackPraise;
+          final multiplier = _controller!.feedbackComboMultiplier;
+          final pillColors = _getFeedbackPillColors(feedbackColor, theme);
+
+          Widget pillContent;
+          if (isCombo && praise != null && multiplier != null) {
+            pillContent = Container(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 7.h),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: pillColors.gradient,
+                ),
+                borderRadius: BorderRadius.circular(20.r),
+                border: Border.all(color: Colors.white, width: 1.8),
+                boxShadow: [
+                  // 1. 3D Solid Bevel Lip
+                  BoxShadow(
+                    color: pillColors.bevel,
+                    offset: const Offset(0, 2.8),
+                    blurRadius: 0,
+                  ),
+                  // 2. Soft Ambient Drop Shadow
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.22),
+                    offset: const Offset(0, 3.5),
+                    blurRadius: 4,
+                    spreadRadius: 0.5,
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Golden Combo Text (Seamless single pill, no nested background!)
+                  Text(
+                    '${AppLocalization.tr('combo', language: _controller?.language)} $multiplier',
+                    style: AppTypography.font(
+                      fontSize: 13.5.sp,
+                      fontWeight: FontWeight.w900,
+                      color: const Color(0xFFFFEE58),
+                      letterSpacing: 0.8,
+                      shadows: const [
+                        Shadow(
+                          color: Color(0xFF78350F),
+                          offset: Offset(0, 1.2),
+                          blurRadius: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 7.w),
+                    child: Container(
+                      width: 1.5,
+                      height: 13.h,
+                      color: Colors.white.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  // Praise Word
+                  Text(
+                    praise,
+                    style: AppTypography.font(
+                      fontSize: 14.5.sp,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: 0.8,
+                      shadows: const [
+                        Shadow(
+                          color: Colors.black38,
+                          offset: Offset(0, 1.2),
+                          blurRadius: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          } else {
+            pillContent = Container(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 7.h),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: pillColors.gradient,
+                ),
+                borderRadius: BorderRadius.circular(20.r),
+                border: Border.all(color: Colors.white, width: 1.8),
+                boxShadow: [
+                  // 1. 3D Solid Bevel Lip
+                  BoxShadow(
+                    color: pillColors.bevel,
+                    offset: const Offset(0, 2.8),
+                    blurRadius: 0,
+                  ),
+                  // 2. Soft Ambient Drop Shadow
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.22),
+                    offset: const Offset(0, 3.5),
+                    blurRadius: 4,
+                    spreadRadius: 0.5,
+                  ),
+                ],
+              ),
+              child: Text(
+                feedback,
+                style: AppTypography.font(
+                  fontSize: 14.5.sp,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: 0.8,
+                  shadows: const [
+                    Shadow(
+                      color: Colors.black38,
+                      offset: Offset(0, 1.2),
+                      blurRadius: 2,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          return Container(
+            height: 48.h,
+            alignment: Alignment.center,
+            child: pillContent
+                .animate(key: ValueKey('feedback-$feedback-${_controller!.comboStreak}'))
+                .scale(
+                  duration: 180.ms,
+                  curve: Curves.easeOutBack,
+                  begin: const Offset(0.85, 0.85),
+                  end: const Offset(1.0, 1.0),
+                )
+                .fadeIn(duration: 100.ms),
+          );
+        }
+
+        return const SizedBox.shrink();
       },
     );
   }

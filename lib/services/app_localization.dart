@@ -1,6 +1,5 @@
 import 'dart:ui';
 import '../services/game_storage.dart';
-import '../services/level_loader.dart';
 
 /// Centralized Localization service for Word Tiles casual game UI.
 /// Supports the 8 gameplay languages:
@@ -50,6 +49,8 @@ class AppLocalization {
   /// Maps game language identifier to 2-letter ISO code.
   static String languageToCode(String lang) {
     switch (lang) {
+      case 'vietnamese':
+        return 'vi';
       case 'german':
         return 'de';
       case 'french':
@@ -158,6 +159,15 @@ class AppLocalization {
       'got_it': 'Got it!',
       'tut_swipe_connect': 'Swipe letters to make words!',
       'unknown_error': 'Unknown error',
+      'not_on_board': 'Not on the board',
+      'already_found': 'Already found!',
+      'obstacle_unlocked': 'Obstacle Unlocked! 🔓',
+      'extra_words_bank_full': '🎁 Extra Words Bank Full! (10/10)',
+      'combo': 'COMBO',
+      'remove_ads_title': 'Remove Ads',
+      'remove_ads_desc_1': 'Remove all ads permanently.',
+      'remove_ads_desc_2': 'Keep ads for rewards.',
+      'one_time_purchase': 'One Time Purchase',
     },
 
     // 2. German / Deutsch 🇩🇪
@@ -221,6 +231,15 @@ class AppLocalization {
       'got_it': 'Verstanden!',
       'tut_swipe_connect': 'Wische über Buchstaben, um Wörter zu bilden!',
       'unknown_error': 'Unbekannter Fehler',
+      'not_on_board': 'Nicht auf dem Spielfeld',
+      'already_found': 'Bereits gefunden!',
+      'obstacle_unlocked': 'Hindernis freigeschaltet! 🔓',
+      'extra_words_bank_full': '🎁 Bonusglas voll! (10/10)',
+      'combo': 'COMBO',
+      'remove_ads_title': 'Keine Werbung',
+      'remove_ads_desc_1': 'Entferne dauerhaft alle Werbung.',
+      'remove_ads_desc_2': 'Belohnungsvideos bleiben erhalten.',
+      'one_time_purchase': 'Einmaliger Kauf',
     },
 
     // 3. French / Français 🇫🇷
@@ -284,6 +303,15 @@ class AppLocalization {
       'got_it': 'Compris !',
       'tut_swipe_connect': 'Glissez sur les lettres pour former des mots !',
       'unknown_error': 'Erreur inconnue',
+      'not_on_board': 'Pas sur la grille',
+      'already_found': 'Déjà trouvé !',
+      'obstacle_unlocked': 'Obstacle débloqué ! 🔓',
+      'extra_words_bank_full': '🎁 Bocal de mots bonus plein ! (10/10)',
+      'combo': 'COMBO',
+      'remove_ads_title': 'Sans Publicité',
+      'remove_ads_desc_1': 'Supprimez définitivement les pubs.',
+      'remove_ads_desc_2': 'Conservez les pubs avec récompense.',
+      'one_time_purchase': 'Achat unique',
     },
 
     // 4. Italian / Italiano 🇮🇹
@@ -347,6 +375,15 @@ class AppLocalization {
       'got_it': 'Ho capito!',
       'tut_swipe_connect': 'Scorri sulle lettere per formare parole!',
       'unknown_error': 'Errore sconosciuto',
+      'not_on_board': 'Non presente sulla griglia',
+      'already_found': 'Già trovato!',
+      'obstacle_unlocked': 'Ostacolo sbloccato! 🔓',
+      'extra_words_bank_full': '🎁 Barattolo parole bonus pieno! (10/10)',
+      'combo': 'COMBO',
+      'remove_ads_title': 'Rimuovi Annunci',
+      'remove_ads_desc_1': 'Rimuovi definitivamente tutti gli annunci.',
+      'remove_ads_desc_2': 'Mantieni gli annunci a premio.',
+      'one_time_purchase': 'Acquisto una tantum',
     },
 
     // 5. Spanish / Español 🇪🇸
@@ -410,6 +447,15 @@ class AppLocalization {
       'got_it': '¡Entendido!',
       'tut_swipe_connect': '¡Desliza las letras para formar palabras!',
       'unknown_error': 'Error desconocido',
+      'not_on_board': 'No está en el tablero',
+      'already_found': '¡Ya encontrado!',
+      'obstacle_unlocked': '¡Obstáculo desbloqueado! 🔓',
+      'extra_words_bank_full': '🎁 ¡Frasco de palabras extra lleno! (10/10)',
+      'combo': 'COMBO',
+      'remove_ads_title': 'Sin Anuncios',
+      'remove_ads_desc_1': 'Elimina todos los anuncios para siempre.',
+      'remove_ads_desc_2': 'Mantén anuncios con recompensa.',
+      'one_time_purchase': 'Pago único',
     },
 
     // 6. Portuguese / Português 🇵🇹
@@ -473,6 +519,15 @@ class AppLocalization {
       'got_it': 'Entendi!',
       'tut_swipe_connect': 'Deslize pelas letras para formar palavras!',
       'unknown_error': 'Erro desconhecido',
+      'not_on_board': 'Não está no tabuleiro',
+      'already_found': 'Já encontrado!',
+      'obstacle_unlocked': 'Obstáculo desbloqueado! 🔓',
+      'extra_words_bank_full': '🎁 Pote de palavras bônus cheio! (10/10)',
+      'combo': 'COMBO',
+      'remove_ads_title': 'Sem Anúncios',
+      'remove_ads_desc_1': 'Remova todos os anúncios para sempre.',
+      'remove_ads_desc_2': 'Mantenha os anúncios de recompensa.',
+      'one_time_purchase': 'Compra única',
     },
 
     // 7. Russian / Русский 🇷🇺
@@ -536,6 +591,15 @@ class AppLocalization {
       'got_it': 'Понятно!',
       'tut_swipe_connect': 'Соединяйте буквы, чтобы составить слова!',
       'unknown_error': 'Неизвестная ошибка',
+      'not_on_board': 'Нет на поле',
+      'already_found': 'Уже найдено!',
+      'obstacle_unlocked': 'Препятствие открыто! 🔓',
+      'extra_words_bank_full': '🎁 Банка доп. слов заполнена! (10/10)',
+      'combo': 'КОМБО',
+      'remove_ads_title': 'Без рекламы',
+      'remove_ads_desc_1': 'Уберите рекламу навсегда.',
+      'remove_ads_desc_2': 'Оставьте рекламу за награды.',
+      'one_time_purchase': 'Единоразовая покупка',
     },
 
     // 8. Turkish / Türkçe 🇹🇷
@@ -599,6 +663,87 @@ class AppLocalization {
       'got_it': 'Anladım!',
       'tut_swipe_connect': 'Kelimeler oluşturmak için harfleri kaydırın!',
       'unknown_error': 'Bilinmeyen hata',
+      'not_on_board': 'Tahtada yok',
+      'already_found': 'Zaten bulundu!',
+      'obstacle_unlocked': 'Engel Açıldı! 🔓',
+      'extra_words_bank_full': '🎁 Ekstra Kelime Kavanozu Dolu! (10/10)',
+      'combo': 'KOMBO',
+      'remove_ads_title': 'Reklamları Kaldır',
+      'remove_ads_desc_1': 'Tüm reklamları kalıcı olarak kaldırın.',
+      'remove_ads_desc_2': 'Ödüllü reklamları saklayın.',
+      'one_time_purchase': 'Tek Seferlik Satın Alma',
+    },
+
+    // 9. Vietnamese / Tiếng Việt 🇻🇳
+    'vietnamese': {
+      'ok': 'OK',
+      'confirm': 'Xác nhận',
+      'cancel': 'Hủy',
+      'close': 'Đóng',
+      'exit': 'Thoát',
+      'stay': 'Ở lại',
+      'play': 'Chơi',
+      'level': 'Màn',
+      'level_n': 'Màn {0}',
+      'loading': 'Đang tải...',
+      'free': 'Miễn phí',
+      'claim': 'Nhận',
+      'settings': 'Cài đặt',
+      'music': 'Âm nhạc',
+      'sound': 'Âm thanh',
+      'vibration': 'Rung',
+      'language': 'Ngôn ngữ',
+      'home': 'Trang chủ',
+      'restart': 'Chơi lại',
+      'restore_purchases': 'Khôi phục mua hàng',
+      'version': 'Phiên bản {0}',
+      'exit_title': 'Thoát trò chơi',
+      'exit_confirm': 'Bạn có chắc chắn muốn thoát?',
+      'exit_reassurance': 'Tiến trình của bạn luôn được lưu!',
+      'progress_level': 'Tiến trình: Màn {0}',
+      'select_level': 'CHỌN CẤP ĐỘ',
+      'target_words': 'TỪ MỤC TIÊU',
+      'extra_words': 'Từ thưởng',
+      'extra_words_desc': 'Tìm các từ phụ ngoài bảng để làm đầy hũ phần thưởng!',
+      'collect_to_open': 'Thu thập 10 từ để mở thưởng!',
+      'reward_claimed': 'Đã nhận thưởng!',
+      'words_found': 'Từ đã tìm:',
+      'hint': 'Gợi ý',
+      'rocket': 'Tên lửa',
+      'shuffle': 'Xáo trộn',
+      'unlock_booster': 'Mở khóa trợ thủ',
+      'booster_title': 'Trợ thủ {0}',
+      'hint_desc': 'Mở một chữ cái để giúp bạn tìm từ!',
+      'rocket_desc': 'Bắn nổ và giải một từ ẩn ngay lập tức!',
+      'not_enough_coins': 'Không đủ xu!',
+      'not_enough_coins_msg': 'Bạn cần {0} 🪙 để mở {1} {2}.\nGhé Cửa hàng để nhận thêm xu!',
+      'go_to_shop': 'Đến Cửa hàng',
+      'level_completed': 'Hoàn thành cấp độ!',
+      'chapter_conquered': 'Vượt qua chương!',
+      'next_level': 'Màn tiếp theo',
+      'next_chapter': 'Chương tiếp theo',
+      'double_coins': 'Nhân đôi xu',
+      'ad_not_available': 'Quảng cáo chưa sẵn sàng. Vui lòng kiểm tra kết nối mạng và thử lại.',
+      'shop': 'Cửa hàng',
+      'special_offers': 'GÓI ĐẶC BIỆT',
+      'remove_ads': 'XÓA QUẢNG CÁO',
+      'coin_packs': 'CỬA HÀNG XU',
+      'daily_gift': 'Quà hàng ngày',
+      'daily_gift_cooldown': 'Thời gian nhận quà',
+      'next_free_reward_in': 'Phần quà tiếp theo sẽ mở sau {0}.',
+      'purchased': 'Đã mua',
+      'got_it': 'Đã hiểu!',
+      'tut_swipe_connect': 'Vuốt các chữ cái để tạo thành từ!',
+      'unknown_error': 'Lỗi không xác định',
+      'not_on_board': 'Không có trên bảng',
+      'already_found': 'Đã tìm thấy!',
+      'obstacle_unlocked': 'Chướng ngại vật đã mở! 🔓',
+      'extra_words_bank_full': '🎁 Hũ từ thưởng đã đầy! (10/10)',
+      'combo': 'COMBO',
+      'remove_ads_title': 'Xóa Quảng Cáo',
+      'remove_ads_desc_1': 'Xóa vĩnh viễn tất cả quảng cáo.',
+      'remove_ads_desc_2': 'Vẫn giữ quảng cáo nhận thưởng.',
+      'one_time_purchase': 'Thanh toán một lần',
     },
   };
 }

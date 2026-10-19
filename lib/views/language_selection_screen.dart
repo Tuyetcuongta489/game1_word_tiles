@@ -8,21 +8,21 @@ import '../services/level_loader.dart';
 import '../theme/app_typography.dart';
 import '../utils/game_transitions.dart';
 
-/// Language Selection Popup Dialog styled consistently with Settings & Exit popups.
+/// Language Selection Screen & Popup Dialog styled consistently with Settings & Exit popups.
 /// Features:
 /// - Purple 3D banner header (`bg_btn_setting.png`)
-/// - Tactile close button overflowing the corner (`icon_close.png`)
+/// - Tactile close button overflowing the corner (`icon_close.png`) - hidden on first launch FTUE
 /// - Sunken pastel panel (`#D5E7F3`) with scrollable 3D language cards
 /// - Real-time selection highlighting with checkmark badge
 /// - Tactile 3D Green "Confirm" button
 class LanguageSelectionScreen extends StatefulWidget {
-  final String currentLanguage;
-  final ValueChanged<String> onLanguageSelected;
+  final String? currentLanguage;
+  final ValueChanged<String>? onLanguageSelected;
 
   const LanguageSelectionScreen({
     super.key,
-    required this.currentLanguage,
-    required this.onLanguageSelected,
+    this.currentLanguage,
+    this.onLanguageSelected,
   });
 
   /// Helper to open LanguageSelectionScreen as a popup dialog
@@ -51,18 +51,16 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
   @override
   void initState() {
     super.initState();
-    _tempSelectedLanguage = widget.currentLanguage;
+    _tempSelectedLanguage = widget.currentLanguage ?? GameStorage.getSelectedLanguage();
   }
 
   void _confirmSelection() async {
     AudioManager.playTileSelect(pitchIndex: 6);
-    if (_tempSelectedLanguage != widget.currentLanguage) {
-      await GameStorage.setSelectedLanguage(_tempSelectedLanguage);
-      widget.onLanguageSelected(_tempSelectedLanguage);
-    }
-    if (mounted) {
-      Navigator.of(context).pop();
-    }
+    await GameStorage.setSelectedLanguage(_tempSelectedLanguage);
+    widget.onLanguageSelected?.call(_tempSelectedLanguage);
+
+    if (!mounted) return;
+    Navigator.of(context).pop();
   }
 
   @override
@@ -72,148 +70,153 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
     return Center(
       child: Material(
         color: Colors.transparent,
-        child: SizedBox(
-          width: 336.w,
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.topCenter,
-            children: [
-              // 1. Outer White Card with Soft 3D Shadow
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(30.r),
-                  border: Border.all(color: const Color(0xFFE5EFF5), width: 3.0),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x38000000),
-                      offset: Offset(0, 12),
-                      blurRadius: 24,
-                      spreadRadius: 2,
-                    ),
-                    BoxShadow(
-                      color: Color(0xFFB0C9DA),
-                      offset: Offset(0, 4),
-                      blurRadius: 0,
-                    ),
-                  ],
+        child: _buildDialogCard(languages),
+      ),
+    );
+  }
+
+  /// Compact Modal Dialog card used when opened from Settings popup.
+  Widget _buildDialogCard(List<String> languages) {
+    return SizedBox(
+      width: 336.w,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
+        children: [
+          // 1. Outer White Card with Soft 3D Shadow
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(30.r),
+              border: Border.all(color: const Color(0xFFE5EFF5), width: 3.0),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x38000000),
+                  offset: Offset(0, 12),
+                  blurRadius: 24,
+                  spreadRadius: 2,
                 ),
-                padding: EdgeInsets.fromLTRB(16.w, 36.h, 16.w, 16.h),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Sunken Pastel Panel containing Language List
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD5E7F3),
-                        borderRadius: BorderRadius.circular(20.r),
-                        border: Border.all(color: const Color(0xFFBED7E8), width: 1.5),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x12000000),
-                            offset: Offset(0, 2),
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
-                      child: SizedBox(
-                        height: 330.h,
-                        child: RawScrollbar(
-                          thumbColor: const Color(0xFF8FAFC6),
-                          radius: Radius.circular(8.r),
-                          thickness: 4.w,
-                          child: ListView.separated(
-                            padding: EdgeInsets.symmetric(vertical: 2.h, horizontal: 2.w),
-                            itemCount: languages.length,
-                            separatorBuilder: (_, _) => SizedBox(height: 8.h),
-                            itemBuilder: (context, index) {
-                              final lang = languages[index];
-                              final isSelected = lang == _tempSelectedLanguage;
-                              final displayName = LevelLoader.languageDisplayNames[lang] ?? lang;
-                              final lastSpaceIdx = displayName.lastIndexOf(' ');
-                              final langName = lastSpaceIdx != -1 ? displayName.substring(0, lastSpaceIdx) : displayName;
-                              final flag = lastSpaceIdx != -1 ? displayName.substring(lastSpaceIdx + 1) : '🌐';
-                              final maxUnlocked = GameStorage.getMaxUnlockedLevelIndex(lang) + 1;
-
-                              return _LanguageItemCard(
-                                flag: flag,
-                                name: langName,
-                                progressLevel: maxUnlocked,
-                                isSelected: isSelected,
-                                onTap: () {
-                                  AudioManager.playTileSelect(pitchIndex: 4);
-                                  setState(() => _tempSelectedLanguage = lang);
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: 16.h),
-
-                    // Confirm 3D Button
-                    _Pressable3DButton(
-                      label: AppLocalization.tr('confirm'),
-                      icon: Icons.check_circle_rounded,
-                      faceColor: const Color(0xFF23D046),
-                      bevelColor: const Color(0xFF135025),
-                      borderColor: const Color(0xFF0F3E1D),
-                      outlineColor: const Color(0xFF0F3E1D),
-                      onTap: _confirmSelection,
-                    ),
-                  ],
+                BoxShadow(
+                  color: Color(0xFFB0C9DA),
+                  offset: Offset(0, 4),
+                  blurRadius: 0,
                 ),
-              ),
-
-              // 2. Header Banner Ribbon (bg_btn_setting.png)
-              Positioned(
-                top: -24.h,
-                child: SizedBox(
-                  width: 216.w,
-                  height: 58.h,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Image.asset(
-                        'assets/icons/bg_btn_setting.webp',
-                        width: 216.w,
-                        height: 58.h,
-                        fit: BoxFit.fill,
-                      ),
-                      Padding(
-                        padding: EdgeInsets.only(bottom: 4.h),
-                        child: CartoonText(
-                          text: AppLocalization.tr('language'),
-                          fontSize: 23,
-                          textColor: Colors.white,
-                          outlineColor: const Color(0xFF380662),
-                          strokeWidth: 3.8,
-                          shadowOffset: 1.4,
-                        ),
+              ],
+            ),
+            padding: EdgeInsets.fromLTRB(16.w, 36.h, 16.w, 16.h),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Sunken Pastel Panel containing Language List
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD5E7F3),
+                    borderRadius: BorderRadius.circular(20.r),
+                    border: Border.all(color: const Color(0xFFBED7E8), width: 1.5),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x12000000),
+                        offset: Offset(0, 2),
+                        blurRadius: 4,
                       ),
                     ],
                   ),
-                ),
-              ),
+                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
+                  child: SizedBox(
+                    height: 330.h,
+                    child: RawScrollbar(
+                      thumbColor: const Color(0xFF8FAFC6),
+                      radius: Radius.circular(8.r),
+                      thickness: 4.w,
+                      child: ListView.separated(
+                        padding: EdgeInsets.symmetric(vertical: 2.h, horizontal: 2.w),
+                        itemCount: languages.length,
+                        separatorBuilder: (_, _) => SizedBox(height: 8.h),
+                        itemBuilder: (context, index) {
+                          final lang = languages[index];
+                          final isSelected = lang == _tempSelectedLanguage;
+                          final displayName = LevelLoader.languageDisplayNames[lang] ?? lang;
+                          final lastSpaceIdx = displayName.lastIndexOf(' ');
+                          final langName = lastSpaceIdx != -1 ? displayName.substring(0, lastSpaceIdx) : displayName;
+                          final flag = lastSpaceIdx != -1 ? displayName.substring(lastSpaceIdx + 1) : '🌐';
+                          final maxUnlocked = GameStorage.getMaxUnlockedLevelIndex(lang) + 1;
 
-              // 3. Tactile Close Button (icon_close.png)
-              Positioned(
-                top: -12.h,
-                right: -4.w,
-                child: _CloseButton(
-                  onTap: () {
-                    AudioManager.playTileSelect(pitchIndex: 1);
-                    Navigator.of(context).pop();
-                  },
+                          return _LanguageItemCard(
+                            flag: flag,
+                            name: langName,
+                            progressLevel: maxUnlocked,
+                            isSelected: isSelected,
+                            onTap: () {
+                              AudioManager.playTileSelect(pitchIndex: 4);
+                              setState(() => _tempSelectedLanguage = lang);
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+
+                SizedBox(height: 16.h),
+
+                // Confirm 3D Button
+                _Pressable3DButton(
+                  label: AppLocalization.tr('confirm'),
+                  icon: Icons.check_circle_rounded,
+                  faceColor: const Color(0xFF23D046),
+                  bevelColor: const Color(0xFF135025),
+                  borderColor: const Color(0xFF0F3E1D),
+                  outlineColor: const Color(0xFF0F3E1D),
+                  onTap: _confirmSelection,
+                ),
+              ],
+            ),
           ),
-        ),
+
+          // 2. Header Banner Ribbon (bg_btn_setting.png)
+          Positioned(
+            top: -24.h,
+            child: SizedBox(
+              width: 216.w,
+              height: 58.h,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Image.asset(
+                    'assets/icons/bg_btn_setting.webp',
+                    width: 216.w,
+                    height: 58.h,
+                    fit: BoxFit.fill,
+                  ),
+                  Padding(
+                    padding: EdgeInsets.only(bottom: 4.h),
+                    child: CartoonText(
+                      text: AppLocalization.tr('language'),
+                      fontSize: 23,
+                      textColor: Colors.white,
+                      outlineColor: const Color(0xFF380662),
+                      strokeWidth: 3.8,
+                      shadowOffset: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // 3. Tactile Close Button (icon_close.png)
+          Positioned(
+            top: -12.h,
+            right: -4.w,
+            child: _CloseButton(
+              onTap: () {
+                AudioManager.playTileSelect(pitchIndex: 1);
+                Navigator.of(context).pop();
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

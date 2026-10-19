@@ -25,6 +25,7 @@
 #import "../../util/FGMainThreadDispatcher.h"
 #import "../../util/FGUtils.h"
 #import "../../util/FGViewControllerTracker.h"
+#import "../../config/FGConfigController.h"
 #import <QuartzCore/QuartzCore.h> // CACurrentMediaTime (≈ System.nanoTime — monotonic)
 #include <atomic>
 
@@ -294,10 +295,18 @@ isInterstitial:(BOOL)isInterstitial
             // OnSDKReady fire khi cả Analystic+Ads ready (Custom → sau MAX primary ready) → autoload.
             FGEvent::InitEvent::OnSDKReady.add([weakSelf] { [weakSelf autoLoadAd]; });
 
-            // Kotlin guard appContext null — iOS không cần Context (adaptation README).
+#if GOOGLE_MOBILE_ADS_ENABLE
+            NSArray<NSString *> *devices = [FGConfigController mainConfig].listDevice;
+            if (devices.count > 0) {
+                GADMobileAds.sharedInstance.requestConfiguration.testDeviceIdentifiers = devices;
+                NSLog(@"[%@] Configured %lu test devices in GADMobileAds", TAG, (unsigned long)devices.count);
+            }
             [GADMobileAds.sharedInstance startWithCompletionHandler:^(GADInitializationStatus *status) {
                 [weakSelf onSdkInitialized];
             }];
+#else
+            [weakSelf onSdkInitialized];
+#endif
         } @catch (NSException *e) {
             NSLog(@"[%@] AdMob init exception: %@", TAG, e);
             self->_onInitializationFailed.invoke(e.reason ?: @"init exception");
@@ -465,6 +474,7 @@ isInterstitial:(BOOL)isInterstitial
                   completionHandler:^(GADRewardedAd *ad, NSError *error) {
         FGAdmobAdsProvider *s = weakSelf; if (!s) return;
         if (error != nil) {
+            NSLog(@"[%@] AdMob Rewarded load error (unit=%@): %@", TAG, unitId, error);
             s->_rewardedAd = nil;
             s->_rewardLastLoadReason = [FGAdmobError mapToReason:error.code];
             FGAdmobLogRequest(s->_rewardCtx, FGConstValue.Reward, NO,

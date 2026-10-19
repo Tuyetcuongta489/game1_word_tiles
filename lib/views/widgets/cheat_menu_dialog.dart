@@ -1,9 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_typography.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../controllers/game_controller.dart';
+import '../../services/analytics_service.dart';
+import '../../services/analytics_toast.dart';
 import '../../services/audio_manager.dart';
 import '../../services/game_storage.dart';
 import '../../services/level_loader.dart';
@@ -68,6 +71,7 @@ class _CheatMenuDialogState extends State<CheatMenuDialog> {
   bool _isInfiniteBoosters = false;
   bool _isHideGameplayUI = false;
   bool _isTutorialTapOutside = false;
+  bool _isFirebaseAnalyticsTest = false;
 
   @override
   void initState() {
@@ -76,6 +80,7 @@ class _CheatMenuDialogState extends State<CheatMenuDialog> {
     _isInfiniteBoosters = GameStorage.isInfiniteBoostersEnabled();
     _isHideGameplayUI = GameStorage.isGameplayUIHidden();
     _isTutorialTapOutside = RemoteConfigService.tutorialTapOutsideClose;
+    _isFirebaseAnalyticsTest = GameStorage.isFirebaseAnalyticsTestEnabled();
 
     final initialLvl = widget.controller?.levelNumber ?? (GameStorage.getCurrentLevelIndex(_lang) + 1);
     _levelTextController = TextEditingController(text: '$initialLvl');
@@ -93,12 +98,25 @@ class _CheatMenuDialogState extends State<CheatMenuDialog> {
   }
 
   void _showFeedbackToast(String msg) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg, style: AppTypography.font(fontWeight: FontWeight.w600)),
-        backgroundColor: const Color(0xFF1E293B),
-        duration: const Duration(milliseconds: 1400),
+        content: Text(
+          msg,
+          style: AppTypography.font(
+            color: Colors.white,
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          side: const BorderSide(color: Color(0xFF38BDF8), width: 1.2),
+        ),
+        backgroundColor: const Color(0xFF0F172A),
+        duration: const Duration(milliseconds: 1800),
       ),
     );
   }
@@ -194,6 +212,14 @@ class _CheatMenuDialogState extends State<CheatMenuDialog> {
                       _buildSectionTitle('📢 ADS & MEDIATION DEBUGGER'),
                       SizedBox(height: 8.h),
                       _buildMaxDebuggerButton(),
+                      SizedBox(height: 16.h),
+
+                      // --- Section 8: Firebase Analytics Testing ---
+                      _buildSectionTitle('🔥 FIREBASE ANALYTICS TRACKING & TEST'),
+                      SizedBox(height: 8.h),
+                      _buildFirebaseAnalyticsTestSwitch(),
+                      SizedBox(height: 8.h),
+                      _buildFirebaseTestButtonsRow(),
                       SizedBox(height: 12.h),
                     ],
                   ),
@@ -865,21 +891,27 @@ class _CheatMenuDialogState extends State<CheatMenuDialog> {
                   ],
                 ),
                 child: Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.bug_report_rounded, color: Colors.white, size: 18),
-                      SizedBox(width: 6.w),
-                      Text(
-                        'OPEN MEDIATION DEBUGGER',
-                        style: AppTypography.font(
-                          color: Colors.white,
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
-                        ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8.w),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.bug_report_rounded, color: Colors.white, size: 18),
+                          SizedBox(width: 6.w),
+                          Text(
+                            'OPEN MEDIATION DEBUGGER',
+                            style: AppTypography.font(
+                              color: Colors.white,
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -887,6 +919,292 @@ class _CheatMenuDialogState extends State<CheatMenuDialog> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFirebaseAnalyticsTestSwitch() {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(
+          color: _isFirebaseAnalyticsTest ? const Color(0xFFF59E0B) : const Color(0xFF334155),
+          width: _isFirebaseAnalyticsTest ? 1.5 : 1.0,
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                const Text('🔥', style: TextStyle(fontSize: 18)),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              'Direct Firebase Tracking',
+                              style: AppTypography.font(
+                                color: Colors.white,
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          SizedBox(width: 6.w),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                            decoration: BoxDecoration(
+                              color: _isFirebaseAnalyticsTest ? const Color(0xFFF59E0B).withValues(alpha: 0.2) : Colors.white10,
+                              borderRadius: BorderRadius.circular(6.r),
+                            ),
+                            child: Text(
+                              _isFirebaseAnalyticsTest ? 'LIVE TEST' : 'DISABLED',
+                              style: AppTypography.font(
+                                color: _isFirebaseAnalyticsTest ? const Color(0xFFF59E0B) : Colors.white38,
+                                fontSize: 9.sp,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        'Bắn trực tiếp Firebase & hiện Toast HUD real-time',
+                        style: AppTypography.font(
+                          color: const Color(0xFF94A3B8),
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: _isFirebaseAnalyticsTest,
+            activeThumbColor: const Color(0xFFF59E0B),
+            onChanged: (val) async {
+              setState(() => _isFirebaseAnalyticsTest = val);
+              await GameStorage.setFirebaseAnalyticsTestEnabled(val);
+              if (!val) {
+                AnalyticsToast.dismiss();
+              }
+              _notifyUpdate();
+              _showFeedbackToast(
+                val
+                    ? '🔥 Firebase Direct Tracking BẬT! Events bắn lên sẽ hiện Toast HUD.'
+                    : 'Firebase Direct Tracking TẮT (Chế độ mặc định FGSDK).',
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFirebaseTestButtonsRow() {
+    final currentLvl = widget.controller?.levelNumber ?? (GameStorage.getCurrentLevelIndex(_lang) + 1);
+
+    return Column(
+      children: [
+        // One-tap fire ALL 15 events
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () async {
+              AudioManager.playTileSelect(pitchIndex: 7);
+              final count = await AnalyticsService.fireAllTestEvents(level: currentLvl);
+              _showFeedbackToast('🚀 Đã bắn thành công $count/15 Events & User Properties lên Firebase!');
+            },
+            borderRadius: BorderRadius.circular(8.r),
+            child: Ink(
+              height: 38.h,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+                ),
+                borderRadius: BorderRadius.circular(8.r),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF8B5CF6).withValues(alpha: 0.35),
+                    offset: const Offset(0, 2),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8.w),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.flash_on_rounded, color: Colors.amberAccent, size: 18),
+                        SizedBox(width: 6.w),
+                        Text(
+                          '⚡ TEST TOÀN BỘ 15 EVENTS (ONE-TAP)',
+                          style: AppTypography.font(
+                            color: Colors.white,
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(height: 8.h),
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionButton(
+                label: 'Test Event 🚀',
+                color: const Color(0xFFEA580C),
+                onTap: () async {
+                  AudioManager.playTileSelect(pitchIndex: 4);
+                  final success = await AnalyticsService.sendTestFirebaseEvent(
+                    eventName: 'test_firebase_event',
+                    params: {
+                      'test_timestamp': DateTime.now().toIso8601String(),
+                      'test_level': currentLvl,
+                      'platform': defaultTargetPlatform.name,
+                      'status': 'success',
+                    },
+                  );
+                  _showFeedbackToast(
+                    success
+                        ? '🔥 Đã bắn event [test_firebase_event] lên Firebase!'
+                        : '⚠️ Bắn event thất bại. Kiểm tra kết nối mạng!',
+                  );
+                },
+              ),
+            ),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: _buildActionButton(
+                label: 'Test level_start 🎮',
+                color: const Color(0xFFD97706),
+                onTap: () {
+                  AudioManager.playTileSelect(pitchIndex: 5);
+                  AnalyticsService.logLevelStart(
+                    level: currentLvl,
+                    playCount: 1,
+                    loseCount: 0,
+                    playMode: 'default',
+                  );
+                  _showFeedbackToast('🔥 Đã bắn event [level_start] Lvl $currentLvl!');
+                },
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 8.h),
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionButton(
+                label: 'Test Resource 💎',
+                color: const Color(0xFF0284C7),
+                onTap: () {
+                  AudioManager.playTileSelect(pitchIndex: 4);
+                  AnalyticsService.logEarnResource(
+                    level: currentLvl,
+                    type: 'currency',
+                    name: 'gold',
+                    amount: 50.0,
+                    reason: 'win_level',
+                    balance: 300.0,
+                  );
+                  AnalyticsService.logSpendResource(
+                    level: currentLvl,
+                    type: 'booster',
+                    name: 'hint',
+                    amount: 1.0,
+                    reason: 'ingame',
+                    balance: 2.0,
+                  );
+                  _showFeedbackToast('🔥 Đã bắn [resource_source] & [resource_sink]!');
+                },
+              ),
+            ),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: _buildActionButton(
+                label: 'Test IAP 🛒',
+                color: const Color(0xFF0D9488),
+                onTap: () {
+                  AudioManager.playTileSelect(pitchIndex: 4);
+                  AnalyticsService.logIAPShow(
+                    level: currentLvl,
+                    location: 'home_shop',
+                    type: 'shop',
+                    productId: 'coin_small',
+                  );
+                  AnalyticsService.logIAPClick(
+                    level: currentLvl,
+                    location: 'home_shop',
+                    type: 'shop',
+                    productId: 'coin_small',
+                  );
+                  _showFeedbackToast('🔥 Đã bắn [iap_show] & [iap_click]!');
+                },
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 8.h),
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionButton(
+                label: 'Test User Props 👤',
+                color: const Color(0xFF475569),
+                onTap: () {
+                  AudioManager.playTileSelect(pitchIndex: 3);
+                  AnalyticsService.updateUserProperties(level: currentLvl);
+                  _showFeedbackToast('🔥 Đã cập nhật User Properties lên Firebase!');
+                },
+              ),
+            ),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: _buildActionButton(
+                label: 'Test level_end 🏆',
+                color: const Color(0xFF059669),
+                onTap: () {
+                  AudioManager.playTileSelect(pitchIndex: 6);
+                  AnalyticsService.logLevelEnd(
+                    level: currentLvl,
+                    playDuration: 25.0,
+                    totalItems: 3,
+                    clearedItems: 3,
+                    success: true,
+                    reason: 'win',
+                  );
+                  _showFeedbackToast('🔥 Đã bắn event [level_end] Lvl $currentLvl (win)!');
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../controllers/game_controller.dart';
 import '../../services/game_storage.dart';
 import '../../theme/app_theme.dart';
@@ -10,8 +11,13 @@ import 'tutorial_overlay.dart';
 
 class BoardWidget extends StatefulWidget {
   final GameController controller;
+  final Widget? topWidget;
 
-  const BoardWidget({super.key, required this.controller});
+  const BoardWidget({
+    super.key,
+    required this.controller,
+    this.topWidget,
+  });
 
   @override
   State<BoardWidget> createState() => BoardWidgetState();
@@ -19,11 +25,19 @@ class BoardWidget extends StatefulWidget {
 
 class BoardWidgetState extends State<BoardWidget> with SingleTickerProviderStateMixin {
   final GlobalKey _gridKey = GlobalKey();
+  final GlobalKey _cardKey = GlobalKey();
   final ValueNotifier<Offset?> _touchPosNotifier = ValueNotifier<Offset?>(null);
   late final TileShatterController _shatterController;
   final Set<String> _previouslyClearedTileKeys = {};
 
   double _tileSize = 64.0;
+
+  /// Returns the top global Y coordinate of the board card container.
+  double? getBoardCardTopGlobal() {
+    final RenderBox? renderBox = _cardKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null || !renderBox.hasSize) return null;
+    return renderBox.localToGlobal(Offset.zero).dy;
+  }
 
   /// Get the global screen coordinates for the centroid of a path of tiles.
   /// If the path is empty, returns the global center of the board grid.
@@ -123,17 +137,29 @@ class BoardWidgetState extends State<BoardWidget> with SingleTickerProviderState
 
     if (width == 0 || height == 0) return;
 
-    _touchPosNotifier.value = localPos;
-
     final col = (localPos.dx / _tileSize).floor();
     final row = (localPos.dy / _tileSize).floor();
 
     if (row >= 0 && row < height && col >= 0 && col < width) {
-      if (isStart) {
+      if (isStart || widget.controller.currentPath.isEmpty) {
         widget.controller.startSwipe(row, col);
       } else {
         widget.controller.updateSwipe(row, col);
       }
+    }
+
+    final tutPath = widget.controller.activeTutorialPath;
+    if (tutPath != null &&
+        widget.controller.currentPath.length >= tutPath.length) {
+      final lastPt = tutPath.last;
+      _touchPosNotifier.value = Offset(
+        (lastPt.x + 0.5) * _tileSize,
+        (lastPt.y + 0.5) * _tileSize,
+      );
+    } else if (widget.controller.currentPath.isEmpty) {
+      _touchPosNotifier.value = null;
+    } else {
+      _touchPosNotifier.value = localPos;
     }
   }
 
@@ -157,105 +183,121 @@ class BoardWidgetState extends State<BoardWidget> with SingleTickerProviderState
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        const double containerPadding = 20.0;
-        const double borderAndMargin = 12.0;
+        final double hMargin = 16.0.w;
+        const double cardPaddingX = 24.0;
+        const double cardPaddingY = 24.0;
 
-        final availableW = max(0.0, constraints.maxWidth - containerPadding - borderAndMargin);
-        final availableH = max(0.0, constraints.maxHeight - containerPadding - borderAndMargin);
+        // Bottom spacing calibrated based on the booster bar below:
+        // - When booster bar is visible (Levels 5+), maintain a comfortable 16.h bottom margin
+        //   above the bottom edge of the board area (which is 10.h above BoosterBar -> 26.h total distance to booster).
+        // - When booster bar is not visible (Levels 1-4), maintain safe distance above the bottom of screen.
+        final double bottomInset = MediaQuery.paddingOf(context).bottom;
+        final double bottomSpacing = widget.controller.isBoosterBarVisible
+            ? 16.0.h
+            : max(bottomInset, 16.0.h);
 
-        final sizeByWidth = width > 0 ? availableW / width : 58.0;
-        final sizeByHeight = height > 0 ? availableH / height : 58.0;
-        _tileSize = min(sizeByWidth, sizeByHeight).clamp(24.0, 64.0);
+        final double topSlotHeight = widget.topWidget != null ? 48.0.h : 0.0;
+        final availableW = max(0.0, constraints.maxWidth - (hMargin * 2) - cardPaddingX);
+        final availableH = max(0.0, constraints.maxHeight - cardPaddingY - bottomSpacing - topSlotHeight);
+
+        final sizeByWidth = width > 0 ? availableW / width : 72.0;
+        final sizeByHeight = height > 0 ? availableH / height : 72.0;
+
+        // Direction B: For 3 letters or fewer, keep tile size moderate so the board card sits centered.
+        // For 4, 5+ letters, expand to full width up to available horizontal space with 16.w margins.
+        final double maxTileSize = width <= 3 ? 80.0.r : 100.0.r;
+        _tileSize = min(sizeByWidth, sizeByHeight).clamp(28.0, maxTileSize);
 
         final boardWidth = width * _tileSize;
         final boardHeight = height * _tileSize;
 
-        return Center(
-          child: ListenableBuilder(
-            listenable: widget.controller,
-            builder: (context, _) {
-              // Check active tutorial guidance
-              List<Point<int>>? tutorialHighlightPath;
-              Point<int>? countSpotlightPt;
-              bool isBoardDimmed = false;
+        return SizedBox(
+          width: constraints.maxWidth,
+          height: constraints.maxHeight,
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onPanStart: (details) => _handleTouch(details.globalPosition, true),
+            onPanUpdate: (details) => _handleTouch(details.globalPosition, false),
+            onPanEnd: (_) => _handleTouchEnd(),
+            onPanCancel: () => _handleTouchEnd(),
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.topWidget != null)
+                    IgnorePointer(child: widget.topWidget!),
+                  ListenableBuilder(
+                listenable: widget.controller,
+                builder: (context, _) {
+                  // Check active tutorial guidance
+                  List<Point<int>>? tutorialHighlightPath;
+                  Point<int>? countSpotlightPt;
+                  bool isBoardDimmed = false;
 
-              // 1. Fail-Safe Dynamic Hint (Levels 1-10 after 5 failed swipes)
-              if (widget.controller.levelNumber <= 10 &&
-                  widget.controller.failSafeHintPath != null &&
-                  widget.controller.failSafeHintPath!.isNotEmpty) {
-                tutorialHighlightPath = widget.controller.failSafeHintPath;
-                isBoardDimmed = false;
-              }
-              // 2. Level 1 Tutorial (Steps 1 & 2 only)
-              else if (!GameStorage.isTutorialCompleted() &&
-                  widget.controller.levelNumber == 1 &&
-                  widget.controller.solvedTargetWords.length < 2) {
-                final nextWord = widget.controller.getNextUnsolvedTargetWord();
-                if (nextWord != null) {
-                  tutorialHighlightPath = widget.controller.getTutorialPathForWord(nextWord);
-                  isBoardDimmed = true;
-                }
-              }
-              // 3. Level 2 Count Tutorial
-              else if (!GameStorage.isCountTutorialShown() &&
-                  !widget.controller.isWon &&
-                  widget.controller.levelNumber == 2) {
-                countSpotlightPt = widget.controller.getFirstTileWithCountGreaterThanOne();
-                if (countSpotlightPt != null) {
-                  isBoardDimmed = true;
-                }
-              }
-              // 4. Level 4 Reverse Swipe Tutorial
-              else if (!GameStorage.isReverseTutorialShown() &&
-                  widget.controller.levelNumber == 4 &&
-                  widget.controller.solvedTargetWords.isEmpty) {
-                final firstWord = widget.controller.level.targetWords.isNotEmpty
-                    ? widget.controller.level.targetWords.first.word
-                    : 'CAR';
-                tutorialHighlightPath = widget.controller.getTutorialPathForWord(firstWord);
-                isBoardDimmed = true;
-              }
-              // 5. Level 5 Hint Booster Tutorial
-              else if (!GameStorage.isHintTutorialShown() &&
-                  !widget.controller.isWon &&
-                  widget.controller.levelNumber == 5) {
-                isBoardDimmed = true;
-              }
-              // 6. Level 6 Extra Words Tutorial
-              else if (!GameStorage.isExtraWordsTutorialShown() &&
-                  !widget.controller.isWon &&
-                  widget.controller.levelNumber == 6) {
-                isBoardDimmed = true;
-              }
-              // 7. Level 7 Rocket Booster Tutorial
-              else if (!GameStorage.isRocketTutorialShown() &&
-                  !widget.controller.isWon &&
-                  widget.controller.levelNumber == 7) {
-                isBoardDimmed = true;
-              }
+                  // 1. Fail-Safe Dynamic Hint (Levels 1-20: 3 failed swipes, Levels 21+: 5 failed swipes)
+                  if (widget.controller.failSafeHintPath != null &&
+                      widget.controller.failSafeHintPath!.isNotEmpty) {
+                    tutorialHighlightPath = widget.controller.failSafeHintPath;
+                    isBoardDimmed = false;
+                  }
+                  // 2. Active Tutorial Path (Level 1 & Level 4)
+                  else if (widget.controller.activeTutorialPath != null) {
+                    tutorialHighlightPath = widget.controller.activeTutorialPath;
+                    isBoardDimmed = true;
+                  }
+                  // 3. Level 2 Count Tutorial
+                  else if (!GameStorage.isCountTutorialShown() &&
+                      !widget.controller.isWon &&
+                      widget.controller.levelNumber == 2) {
+                    countSpotlightPt = widget.controller.getFirstTileWithCountGreaterThanOne();
+                    if (countSpotlightPt != null) {
+                      isBoardDimmed = true;
+                    }
+                  }
+                  // 5. Level 5 Hint Booster Tutorial
+                  else if (!GameStorage.isHintTutorialShown() &&
+                      !widget.controller.isWon &&
+                      widget.controller.levelNumber == 5) {
+                    isBoardDimmed = true;
+                  }
+                  // 6. Level 6 Extra Words Tutorial
+                  else if (!GameStorage.isExtraWordsTutorialShown() &&
+                      !widget.controller.isWon &&
+                      widget.controller.levelNumber == 6) {
+                    isBoardDimmed = true;
+                  }
+                  // 7. Level 7 Rocket Booster Tutorial
+                  else if (!GameStorage.isRocketTutorialShown() &&
+                      !widget.controller.isWon &&
+                      widget.controller.levelNumber == 7) {
+                    isBoardDimmed = true;
+                  }
 
-              return RepaintBoundary(
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: const AssetImage('assets/images/bg_card_board.png'),
-                      fit: BoxFit.fill,
-                      opacity: isBoardDimmed ? 0.6 : 1.0,
-                    ),
-                  ),
-                  child: SizedBox(
-                    width: boardWidth,
-                    height: boardHeight,
-                    child: GestureDetector(
-                      onPanStart: (details) => _handleTouch(details.globalPosition, true),
-                      onPanUpdate: (details) => _handleTouch(details.globalPosition, false),
-                      onPanEnd: (_) => _handleTouchEnd(),
-                      onPanCancel: () => _handleTouchEnd(),
-                      child: Stack(
-                        key: _gridKey,
-                        clipBehavior: Clip.none,
-                        children: [
+                  return RepaintBoundary(
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        left: hMargin,
+                        right: hMargin,
+                        bottom: bottomSpacing,
+                      ),
+                      child: Container(
+                        key: _cardKey,
+                        padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
+                      decoration: BoxDecoration(
+                        image: DecorationImage(
+                          image: const AssetImage('assets/images/bg_card_board.png'),
+                          fit: BoxFit.fill,
+                          opacity: isBoardDimmed ? 0.6 : 1.0,
+                        ),
+                      ),
+                      child: SizedBox(
+                        width: boardWidth,
+                        height: boardHeight,
+                        child: Stack(
+                          key: _gridKey,
+                          clipBehavior: Clip.none,
+                          children: [
                           // 1. Glowing Laser Swipe Trail (120 FPS)
                           if (widget.controller.currentPath.isNotEmpty)
                             Positioned.fill(
@@ -364,29 +406,14 @@ class BoardWidgetState extends State<BoardWidget> with SingleTickerProviderState
 
                           List<Point<int>>? guidePath;
 
-                          // Priority 1: Fail-Safe Dynamic Hint (Levels 1-10 after 5 failed swipes)
-                          if (widget.controller.levelNumber <= 10 &&
-                              widget.controller.failSafeHintPath != null &&
+                          // Priority 1: Fail-Safe Dynamic Hint (Levels 1-20: 3 failed swipes, Levels 21+: 5 failed swipes)
+                          if (widget.controller.failSafeHintPath != null &&
                               widget.controller.failSafeHintPath!.isNotEmpty) {
                             guidePath = widget.controller.failSafeHintPath;
                           }
-                          // Priority 2: Level 1 Tutorial (Steps 1 & 2 only: SUN and ICE, Step 3 JOB is free play)
-                          else if (!GameStorage.isTutorialCompleted() &&
-                              widget.controller.levelNumber == 1 &&
-                              widget.controller.solvedTargetWords.length < 2) {
-                            final nextWord = widget.controller.getNextUnsolvedTargetWord();
-                            if (nextWord != null) {
-                              guidePath = widget.controller.getTutorialPathForWord(nextWord);
-                            }
-                          }
-                          // Priority 3: Level 4 Reverse Swipe Tutorial
-                          else if (!GameStorage.isReverseTutorialShown() &&
-                              widget.controller.levelNumber == 4 &&
-                              widget.controller.solvedTargetWords.isEmpty) {
-                            final firstWord = widget.controller.level.targetWords.isNotEmpty
-                                ? widget.controller.level.targetWords.first.word
-                                : 'CAR';
-                            guidePath = widget.controller.getTutorialPathForWord(firstWord);
+                          // Priority 2: Active Tutorial Path (Level 1 & Level 4)
+                          else if (widget.controller.activeTutorialPath != null) {
+                            guidePath = widget.controller.activeTutorialPath;
                           }
 
                           if (guidePath == null || guidePath.isEmpty) {
@@ -407,10 +434,14 @@ class BoardWidgetState extends State<BoardWidget> with SingleTickerProviderState
               ),
             ),
           );
-        },
-      ),
-    );
-  },
+          },
+        ),
+      ],
+    ),
+  ),
+),
+);
+},
 );
   }
 }

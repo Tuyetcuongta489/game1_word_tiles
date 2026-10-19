@@ -1,80 +1,52 @@
-{
+﻿{
   "id": 5,
-  "width": 4,
+  "width": 3,
   "height": 2,
   "target_words": [
     {
-      "word": "ITS",
+      "word": "ACE",
       "type": 0
     },
     {
-      "word": "SEE",
+      "word": "ICE",
       "type": 0
     },
     {
-      "word": "USE",
+      "word": "MACE",
+      "type": 2
+    },
+    {
+      "word": "MICE",
       "type": 0
     },
     {
-      "word": "ITEM",
-      "type": 0
-    },
-    {
-      "word": "REST",
-      "type": 0
-    },
-    {
-      "word": "USER",
+      "word": "MILE",
       "type": 0
     }
   ],
   "extra_words": [
     {
-      "word": "MET",
+      "word": "CAM",
       "type": 0
     },
     {
-      "word": "REE",
+      "word": "LICE",
       "type": 0
     },
     {
-      "word": "RES",
-      "type": 0
+      "word": "LIMA",
+      "type": 2
     },
     {
-      "word": "SER",
-      "type": 0
+      "word": "MICA",
+      "type": 1
     },
     {
-      "word": "TEE",
-      "type": 0
-    },
-    {
-      "word": "SEEM",
-      "type": 0
-    },
-    {
-      "word": "STEM",
-      "type": 0
-    },
-    {
-      "word": "SUIT",
-      "type": 0
-    },
-    {
-      "word": "TEES",
-      "type": 0
-    },
-    {
-      "word": "STEER",
-      "type": 0
-    },
-    {
-      "word": "SUITE",
+      "word": "MIL",
       "type": 0
     }
   ],
-  "letters": "USER,ITEM",
-  "counts": "2542,2321",
-  "obstacles": []
+  "letters": "ACE,MIL",
+  "obstacles": [
+  ]
 }

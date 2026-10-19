@@ -23,6 +23,7 @@
 #import "../../util/FGMainThreadDispatcher.h"
 #import "../../util/FGUtils.h"
 #import "../../util/FGViewControllerTracker.h"
+#import "../../config/FGConfigController.h"
 #import <AppLovinSDK/AppLovinSDK.h>
 #import <QuartzCore/QuartzCore.h> // CACurrentMediaTime (≈ System.nanoTime — monotonic)
 #include <atomic>
@@ -291,6 +292,11 @@ static void FGMaxOnRevenue(MAAd *ad, NSString *format, const FGMaxShowCtx &c, BO
                 configurationWithSdkKey:key
                             builderBlock:^(ALSdkInitializationConfigurationBuilder *builder) {
                                 builder.mediationProvider = ALMediationProviderMAX;
+                                NSArray<NSString *> *devices = [FGConfigController mainConfig].listDevice;
+                                if (devices.count > 0) {
+                                    builder.testDeviceAdvertisingIdentifiers = devices;
+                                    NSLog(@"[%@] Configured %lu test devices in ALSdk", TAG, (unsigned long)devices.count);
+                                }
                             }];
             [[ALSdk shared] initializeWithConfiguration:cfg
                                       completionHandler:^(ALSdkConfiguration *sdkConfig) {
@@ -370,6 +376,7 @@ static void FGMaxOnRevenue(MAAd *ad, NSString *format, const FGMaxShowCtx &c, BO
     };
     proxy.onLoadFailed = ^(NSString *adUnitIdentifier, MAError *error) {
         FGMaxAdsProvider *s = weakSelf; if (!s) return;
+        NSLog(@"[%@] Interstitial onLoadFailed: unitId=%@, code=%ld, message=%@", TAG, adUnitIdentifier, (long)error.code, error.message);
         FGMaxLogRequest(s->_interCtx, FGConstValue.Interstitial, NO, [FGMaxError classifyLoad:error.code],
                         FGMaxSecs(s->_interLoadStart), s->_interRequestCount, @"unknown", unitId);
         FGPublicEvent::Interstitial.FailedToLoad.invoke(FGMaxErrInfo(unitId, FGConstValue.Interstitial, s->_interCtx.location));
@@ -470,6 +477,7 @@ static void FGMaxOnRevenue(MAAd *ad, NSString *format, const FGMaxShowCtx &c, BO
     };
     proxy.onLoadFailed = ^(NSString *adUnitIdentifier, MAError *error) {
         FGMaxAdsProvider *s = weakSelf; if (!s) return;
+        NSLog(@"[%@] Rewarded onLoadFailed: unitId=%@, code=%ld, message=%@", TAG, adUnitIdentifier, (long)error.code, error.message);
         FGMaxLogRequest(s->_rewardCtx, FGConstValue.Reward, NO, [FGMaxError classifyLoad:error.code],
                         FGMaxSecs(s->_rewardLoadStart), s->_rewardRequestCount, @"unknown", unitId);
         FGPublicEvent::Rewarded.FailedToLoad.invoke(FGMaxErrInfo(unitId, FGConstValue.Reward, s->_rewardCtx.location));

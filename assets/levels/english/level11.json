@@ -1,108 +1,56 @@
-{
+﻿{
   "id": 11,
   "width": 4,
   "height": 2,
   "target_words": [
     {
-      "word": "ALL",
+      "word": "ATE",
       "type": 0
     },
     {
-      "word": "ITS",
+      "word": "EAT",
       "type": 0
     },
     {
-      "word": "CELL",
+      "word": "SEA",
       "type": 0
     },
     {
-      "word": "LAST",
+      "word": "SEE",
+      "type": 0
+    },
+    {
+      "word": "LATE",
+      "type": 0
+    },
+    {
+      "word": "SEAL",
+      "type": 0
+    },
+    {
+      "word": "SEAT",
+      "type": 0
+    },
+    {
+      "word": "FALSE",
+      "type": 0
+    },
+    {
+      "word": "SLATE",
       "type": 0
     }
   ],
   "extra_words": [
     {
-      "word": "ALT",
+      "word": "LAT",
       "type": 0
     },
     {
-      "word": "CEL",
-      "type": 0
-    },
-    {
-      "word": "ELL",
-      "type": 0
-    },
-    {
-      "word": "ICE",
-      "type": 0
-    },
-    {
-      "word": "ILL",
-      "type": 0
-    },
-    {
-      "word": "LAS",
-      "type": 0
-    },
-    {
-      "word": "LIT",
-      "type": 0
-    },
-    {
-      "word": "SAL",
-      "type": 0
-    },
-    {
-      "word": "TIC",
-      "type": 0
-    },
-    {
-      "word": "TIL",
-      "type": 0
-    },
-    {
-      "word": "ALTS",
-      "type": 0
-    },
-    {
-      "word": "LICE",
-      "type": 0
-    },
-    {
-      "word": "LITS",
-      "type": 0
-    },
-    {
-      "word": "SALL",
-      "type": 0
-    },
-    {
-      "word": "SALT",
-      "type": 0
-    },
-    {
-      "word": "TILE",
-      "type": 0
-    },
-    {
-      "word": "TILL",
-      "type": 0
-    },
-    {
-      "word": "CELLA",
-      "type": 0
-    },
-    {
-      "word": "STILE",
-      "type": 0
-    },
-    {
-      "word": "STILL",
-      "type": 0
+      "word": "TEES",
+      "type": 2
     }
   ],
-  "letters": "STIC,ALLE",
-  "counts": "2211,2321",
-  "obstacles": []
+  "letters": "ALAT,FSEE",
+  "obstacles": [
+  ]
 }

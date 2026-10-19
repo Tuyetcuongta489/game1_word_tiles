@@ -24,8 +24,8 @@ plugins {
 // ============================================================================
 // Android Versioning: Tăng số này khi build Android bằng Android Studio / IDE
 // ============================================================================
-val androidVersionCode = 103
-val androidVersionName = "1.0.3"
+val androidVersionCode = 106
+val androidVersionName = "1.0.6"
 
 android {
     namespace = "com.fw.word.connect.puzzle"
@@ -70,6 +70,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+    }
+
+    packaging {
+        jniLibs {
+            excludes += listOf("**/libapplovin-native-crash-reporter.so")
         }
     }
 

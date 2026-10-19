@@ -119,8 +119,8 @@ static NSString *const kFGAppsFlyerTag = @"FGAppsFlyer";
     @try {
         AppsFlyerConsent *consent =
             [[AppsFlyerConsent alloc] initWithIsUserSubjectToGDPR:@YES
-                                              consentForDataUsage:@(isConsent)
-                                     consentForAdsPersonalization:@(isConsent && _isATT)
+                                           hasConsentForDataUsage:@(isConsent)
+                                  hasConsentForAdsPersonalization:@(isConsent && _isATT)
                                            hasConsentForAdStorage:@(isConsent)];
         [[AppsFlyerLib shared] setConsentData:consent];
     } @catch (id e) {

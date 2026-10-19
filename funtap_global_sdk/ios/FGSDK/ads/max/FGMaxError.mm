@@ -38,7 +38,6 @@ static const NSInteger kAdDisplayFailedCode = -4205;
         case MAErrorCodeNoNetwork:
         case MAErrorCodeNetworkTimeout:
             return @"network";
-        case MAErrorCodeFullscreenAdLoadWhileShowing:
         case MAErrorCodeFullscreenAdInvalidViewController:
             return @"invalid_state";
         default:

@@ -8,14 +8,14 @@ import 'package:funtap_global_sdk/funtap_global_sdk.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../services/ads_manager.dart';
 import '../services/analytics_service.dart';
+import '../services/app_localization.dart';
 import '../services/audio_manager.dart';
 import '../services/chapter_loader.dart';
 import '../services/game_storage.dart';
 import '../services/iap_manager.dart';
-import '../services/level_loader.dart';
 import '../services/remote_config_service.dart';
-import 'game_screen.dart';
 import 'home_screen.dart';
+import 'first_language_screen.dart';
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
@@ -42,16 +42,26 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
 
   Future<void> _startLoadingPipeline() async {
     final startTime = DateTime.now();
+    bool initFinished = false;
 
     // 1. Start smooth visual progress
-    _progressTimer = Timer.periodic(const Duration(milliseconds: 30), (timer) {
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 25), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
       }
       setState(() {
-        if (_progress < 0.90) {
-          _progress += 0.02;
+        if (!initFinished) {
+          if (_progress < 0.88) {
+            _progress += 0.012;
+          }
+        } else {
+          if (_progress < 1.0) {
+            _progress += 0.025;
+            if (_progress >= 1.0) {
+              _progress = 1.0;
+            }
+          }
         }
       });
     });
@@ -93,29 +103,37 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
     }
 
     // Initialize AdsManager & RemoteConfig once SDK & Consent are ready
-    try {
-      AdsManager.init();
-      // Wait for Remote Config to be ready from cloud if possible (max 1500ms)
-      final rcStartTime = DateTime.now();
-      while (!await FGSDK.isRemoteConfigReady() &&
-          DateTime.now().difference(rcStartTime).inMilliseconds < 1500) {
-        await Future.delayed(const Duration(milliseconds: 100));
-      }
-      await RemoteConfigService.fetchConfigs();
-    } catch (_) {}
+    if (!isTest) {
+      try {
+        AdsManager.init();
+        // Wait for Remote Config to be ready from cloud if possible (max 1500ms)
+        final rcStartTime = DateTime.now();
+        while (!await FGSDK.isRemoteConfigReady() &&
+            DateTime.now().difference(rcStartTime).inMilliseconds < 1500) {
+          await Future.delayed(const Duration(milliseconds: 100));
+        }
+        await RemoteConfigService.fetchConfigs();
+      } catch (_) {}
+    }
 
     // Initialize IAP manager in background
     try {
       unawaited(IapManager.init());
     } catch (_) {}
 
-    // Small delay to ensure smooth, pleasant animation
-    await Future.delayed(const Duration(milliseconds: 500));
+    // Mark init as finished so timer drives progress to 100%
+    initFinished = true;
+
+    // Wait until progress actually completes to 100%
+    while (_progress < 1.0) {
+      if (!mounted) return;
+      await Future.delayed(const Duration(milliseconds: 25));
+    }
 
     if (!mounted) return;
     _progressTimer?.cancel();
 
-    // Complete to 100%
+    // Ensure state reflects 100%
     setState(() {
       _progress = 1.0;
     });
@@ -126,31 +144,18 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
       AnalyticsService.logTutorial(name: 'ftue_loading_end', value: 2);
     }
 
-    await Future.delayed(const Duration(milliseconds: 300));
+    // Brief pause at 100% so user clearly registers 100% before transition
+    await Future.delayed(const Duration(milliseconds: 250));
 
     if (!mounted) return;
     final nav = Navigator.of(context);
     final isFirstSession = GameStorage.isFirstSession();
 
     if (isFirstSession) {
-      await GameStorage.markFirstSessionCompleted();
-      final lang = GameStorage.getSelectedLanguage();
-      final count = LevelLoader.totalLevelsPerLanguage[lang] ?? 1000;
-      final currentLvl = GameStorage.getMaxUnlockedLevelIndex(lang).clamp(0, count > 0 ? count - 1 : 0);
-
       nav.pushReplacement(
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(isFirstSessionStart: true),
-          transitionDuration: Duration.zero,
-        ),
-      );
-      nav.push(
-        PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 600),
-          pageBuilder: (context, animation, secondaryAnimation) => GameScreen(
-            language: lang,
-            levelIndex: currentLvl,
-          ),
+          pageBuilder: (context, animation, secondaryAnimation) => const FirstLanguageScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(
               opacity: CurvedAnimation(parent: animation, curve: Curves.easeInOut),
@@ -241,34 +246,19 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
 
                 const Spacer(flex: 18),
 
-                // Loading... status label
-                Text(
-                  'Loading...',
-                  style: AppTypography.font(
-                    fontSize: 17.sp,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    letterSpacing: 0.5,
-                    shadows: const [
-                      Shadow(
-                        color: Color(0x99000000),
-                        offset: Offset(0, 1.5),
-                        blurRadius: 4,
-                      ),
-                    ],
-                  ),
-                ).animate().fadeIn(duration: 400.ms),
+                // Animated Loading... status label with dynamic cycling dots & shimmer wave
+                const AnimatedLoadingText(),
 
                 SizedBox(height: 10.h),
 
-                // Sleek Capsule Progress Bar
+                // Sleek Capsule Progress Bar with Percentage
                 Container(
                   width: 246.w,
-                  height: 20.h,
+                  height: 22.h,
                   padding: EdgeInsets.all(2.5.r),
                   decoration: BoxDecoration(
                     color: const Color(0xFF2C2D38),
-                    borderRadius: BorderRadius.circular(10.r),
+                    borderRadius: BorderRadius.circular(11.r),
                     border: Border.all(
                       color: const Color(0xFFF3ECE4),
                       width: 2.5,
@@ -281,37 +271,58 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
                       ),
                     ],
                   ),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final maxW = constraints.maxWidth;
-                      final barW = (maxW * _progress.clamp(0.0, 1.0));
-                      return Align(
-                        alignment: Alignment.centerLeft,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 100),
-                          width: barW,
-                          height: double.infinity,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(7.r),
-                            gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFF5FE86D), // bright top lime highlight
-                                Color(0xFF32D34E), // rich emerald green
-                                Color(0xFF1EAE3A), // deep green base
-                              ],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                            ),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x664ADE80),
-                                blurRadius: 4,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final maxW = constraints.maxWidth;
+                          final barW = (maxW * _progress.clamp(0.0, 1.0));
+                          return Align(
+                            alignment: Alignment.centerLeft,
+                            child: Container(
+                              width: barW,
+                              height: double.infinity,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(7.r),
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF5FE86D), // bright top lime highlight
+                                    Color(0xFF32D34E), // rich emerald green
+                                    Color(0xFF1EAE3A), // deep green base
+                                  ],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                ),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x664ADE80),
+                                    blurRadius: 4,
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          );
+                        },
+                      ),
+                      // Centered percentage inside the progress capsule
+                      Text(
+                        '${(_progress.clamp(0.0, 1.0) * 100).toInt()}%',
+                        style: AppTypography.font(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                          shadows: const [
+                            Shadow(
+                              color: Color(0xCC000000),
+                              offset: Offset(0, 1.2),
+                              blurRadius: 2.5,
+                            ),
+                          ],
                         ),
-                      );
-                    },
+                      ),
+                    ],
                   ),
                 ).animate().fadeIn(duration: 500.ms),
 
@@ -324,3 +335,93 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
     );
   }
 }
+
+/// Animated loading text with dynamic cycling dots & continuous shimmer wave.
+/// Optical center alignment balances trailing dots with hidden phantom dots to prevent layout jitter.
+class AnimatedLoadingText extends StatefulWidget {
+  final TextStyle? style;
+
+  const AnimatedLoadingText({super.key, this.style});
+
+  @override
+  State<AnimatedLoadingText> createState() => _AnimatedLoadingTextState();
+}
+
+class _AnimatedLoadingTextState extends State<AnimatedLoadingText>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final baseStyle = widget.style ??
+        AppTypography.font(
+          fontSize: 17.sp,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+          letterSpacing: 0.5,
+          shadows: const [
+            Shadow(
+              color: Color(0x99000000),
+              offset: Offset(0, 1.5),
+              blurRadius: 4,
+            ),
+          ],
+        );
+
+    final rawText = AppLocalization.tr('loading');
+    final baseText = rawText.replaceAll('.', '').trim();
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final dotCount = (_controller.value * 4).floor().clamp(0, 3);
+        final dots = '.' * dotCount;
+
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Left invisible placeholder matches width of 3 dots for exact optical center
+            Opacity(
+              opacity: 0.0,
+              child: Text('...', style: baseStyle),
+            ),
+            Text(baseText, style: baseStyle),
+            // Right slot with fixed width of 3 dots displaying active dots
+            Stack(
+              alignment: Alignment.centerLeft,
+              children: [
+                Opacity(
+                  opacity: 0.0,
+                  child: Text('...', style: baseStyle),
+                ),
+                Text(dots, style: baseStyle),
+              ],
+            ),
+          ],
+        );
+      },
+    )
+        .animate(onPlay: (c) => c.repeat())
+        .shimmer(
+          duration: 1800.ms,
+          color: Colors.white.withValues(alpha: 0.75),
+        );
+  }
+}
+

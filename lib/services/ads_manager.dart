@@ -196,17 +196,31 @@ class AdsManager {
   /// - Marks hasShownFirstInter = true upon completion.
   static Future<void> showInterEndgame({
     required int levelNumber,
-    required VoidCallback onCompleted,
+    required Function onCompleted,
   }) async {
+    void invokeCallback([bool adWasShown = false]) {
+      if (onCompleted is void Function(bool)) {
+        onCompleted(adWasShown);
+      } else if (onCompleted is void Function()) {
+        onCompleted();
+      } else {
+        try {
+          (onCompleted as dynamic)(adWasShown);
+        } catch (_) {
+          (onCompleted as dynamic)();
+        }
+      }
+    }
+
     if (!enableAds) {
       debugPrint('[AdsManager] Ads disabled (enableAds = false) -> skipping Endgame Interstitial.');
-      onCompleted();
+      invokeCallback(false);
       return;
     }
 
     if (GameStorage.isNoAdsPurchased()) {
       debugPrint('[AdsManager] User has purchased No Ads -> skipping Endgame Interstitial.');
-      onCompleted();
+      invokeCallback(false);
       return;
     }
 
@@ -220,12 +234,13 @@ class AdsManager {
     );
 
     if (!isLevelEligible || !isIntervalPassed || _isShowingAd) {
-      onCompleted();
+      invokeCallback(false);
       return;
     }
 
     _isShowingAd = true;
     _adWasClicked = false;
+    bool adWasShown = false;
 
     final completer = Completer<void>();
     StreamSubscription? closeSub;
@@ -248,13 +263,15 @@ class AdsManager {
         completer.future,
       ]);
       _recordAdCompleted();
+      adWasShown = true;
+      unawaited(GameStorage.setHasWatchedInterEndgame(true));
     } catch (e) {
       debugPrint('[AdsManager] Error showing endgame inter: $e');
     } finally {
       await closeSub.cancel();
       await failSub.cancel();
       _isShowingAd = false;
-      onCompleted();
+      invokeCallback(adWasShown);
     }
   }
 
@@ -404,6 +421,9 @@ class AdsManager {
     _showingAdStartTime = DateTime.now();
     _adWasClicked = false;
 
+    // Triggered when user taps any button to view rewarded ad according to game logic (spec Sheet 2)
+    AnalyticsService.logAfRewardedLogicGame();
+
     // 2. Check if Rewarded Ad is already loaded and ready
     bool isReady = false;
     try {
@@ -415,12 +435,12 @@ class AdsManager {
       isReady = false;
     }
 
-    // 3. If not ready, request on-demand load and wait up to 5 seconds
+    // 3. If not ready, request on-demand load and wait up to 8 seconds
     if (!isReady) {
-      debugPrint('[AdsManager] Rewarded ad not ready. Requesting on-demand load & waiting up to 5s...');
+      debugPrint('[AdsManager] Rewarded ad not ready. Requesting on-demand load & waiting up to 8s...');
       preloadRewarded();
       try {
-        await FGSDK.onRewardedLoaded.first.timeout(const Duration(seconds: 5));
+        await FGSDK.onRewardedLoaded.first.timeout(const Duration(seconds: 8));
         isReady = true;
         debugPrint('[AdsManager] Rewarded ad loaded successfully on-demand!');
       } catch (e) {
@@ -475,7 +495,6 @@ class AdsManager {
     });
 
     try {
-      AnalyticsService.logAfRewardedLogicGame();
       debugPrint('[AdsManager] Showing Rewarded ad (placement: $placement, level: $levelNumber)...');
       await Future.any([
         FGSDK.showRewarded(placement, 'classic', levelNumber),

@@ -15,6 +15,8 @@ import '../../theme/app_typography.dart';
 import '../../utils/game_transitions.dart';
 import '../widgets/bouncy_button.dart';
 import '../shop_screen.dart';
+import 'remove_ads_dialog.dart';
+import '../../services/no_ads_trigger_service.dart';
 
 enum VictoryStep {
   congrats,
@@ -234,18 +236,38 @@ class _VictoryOverlayState extends State<VictoryOverlay>
     _previewSoundTimer?.cancel();
     _autoAdvanceTimer?.cancel();
 
+    final shouldShowNoAds = NoAdsTriggerService.shouldShowCase2();
+
+    void proceedToNextStep() {
+      if (!mounted) return;
+      if (shouldShowNoAds) {
+        NoAdsTriggerService.onCase2Triggered();
+        RemoveAdsDialog.show(
+          context,
+          level: widget.controller.levelNumber,
+          location: 'endgame_periodic_win',
+          onClosed: () {
+            if (mounted) {
+              widget.onNextLevel();
+            }
+          },
+        );
+      } else {
+        widget.onNextLevel();
+      }
+    }
+
     // If user already watched rewarded ad on this victory dialog, NEVER show an interstitial ad
     if (skipAd || _claimedDouble) {
       debugPrint('[VictoryDialog] Rewarded ad was watched -> skipping Endgame Interstitial.');
-      widget.onNextLevel();
+      proceedToNextStep();
       return;
     }
 
     AdsManager.showInterEndgame(
       levelNumber: widget.controller.levelNumber,
-      onCompleted: () {
-        if (!mounted) return;
-        widget.onNextLevel();
+      onCompleted: (bool adWasShown) {
+        proceedToNextStep();
       },
     );
   }
@@ -306,7 +328,9 @@ class _VictoryOverlayState extends State<VictoryOverlay>
             reason: 'ads',
             balance: GameStorage.getCoins().toDouble(),
           );
-          setState(() => _claimedDouble = true);
+          if (mounted) {
+            setState(() => _claimedDouble = true);
+          }
           AudioManager.playWordMatch();
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -354,10 +378,14 @@ class _VictoryOverlayState extends State<VictoryOverlay>
       GamePageRoute(
         child: ShopScreen(
           currentLevel: widget.controller.levelNumber,
-          onClosed: () => setState(() {}),
+          onClosed: () {
+            if (mounted) setState(() {});
+          },
         ),
       ),
-    ).then((_) => setState(() {}));
+    ).then((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   Widget _buildTopBar() {
@@ -763,14 +791,14 @@ class _VictoryOverlayState extends State<VictoryOverlay>
         // Top Bar: Coins Capsule on Left
         _buildTopBar(),
 
-        SizedBox(height: 0.05.sh),
+        const Spacer(flex: 1),
         // Center: Golden Crown & Congrats graphic with glowing light aura
         Stack(
           alignment: Alignment.center,
           children: [
             Container(
-              width: 280.w,
-              height: 180.h,
+              width: 280.r,
+              height: 180.r,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
@@ -783,7 +811,7 @@ class _VictoryOverlayState extends State<VictoryOverlay>
             ),
             Image.asset(
               'assets/icons/icon_congrats.webp',
-              width: 290.w,
+              width: 290.r,
               fit: BoxFit.contain,
             ),
           ],
@@ -796,11 +824,11 @@ class _VictoryOverlayState extends State<VictoryOverlay>
               end: const Offset(1.0, 1.0),
             ),
 
-        SizedBox(height: 0.05.sh),
+        const Spacer(flex: 1),
 
         // Message Capsule: Dynamic celebratory message with % percentile or skill compliments
         Container(
-          constraints: BoxConstraints(maxWidth: 270.w),
+          constraints: BoxConstraints(maxWidth: 320.w),
           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
           decoration: BoxDecoration(
             color: const Color(0xFF041026).withValues(alpha: 0.92),
@@ -849,18 +877,18 @@ class _VictoryOverlayState extends State<VictoryOverlay>
             .fadeIn(duration: 400.ms, delay: 200.ms)
             .slideY(begin: 0.2, end: 0, curve: Curves.easeOutBack),
 
-        SizedBox(height: 0.1.sh),
+        const Spacer(flex: 2),
 
         // Chapter Progress Bar with Coin Reward Stack
         SizedBox(
-          width: 250.w,
+          width: 250.r,
           child: Stack(
             clipBehavior: Clip.none,
             alignment: Alignment.centerLeft,
             children: [
               // Progress Bar Track Capsule
               Container(
-                width: 226.w,
+                width: 226.r,
                 height: 30.h,
                 padding: EdgeInsets.all(2.5.r),
                 decoration: BoxDecoration(
@@ -924,7 +952,7 @@ class _VictoryOverlayState extends State<VictoryOverlay>
                   children: [
                     Image.asset(
                       'assets/icons/icon_coin_victory.webp',
-                      width: 55.w,
+                      width: 55.r,
                       fit: BoxFit.contain,
                     ),
                     Positioned(
@@ -953,7 +981,7 @@ class _VictoryOverlayState extends State<VictoryOverlay>
           ),
         ).animate().fadeIn(duration: 400.ms, delay: 350.ms),
 
-        SizedBox(height: 0.1.sh),
+        const Spacer(flex: 2),
 
         Builder(
           builder: (context) {
@@ -1096,6 +1124,7 @@ class _VictoryOverlayState extends State<VictoryOverlay>
             );
           },
         ).animate().fadeIn(duration: 400.ms, delay: 450.ms),
+        const Spacer(flex: 1),
       ],
     );
   }

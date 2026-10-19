@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/level_model.dart';
 import 'level_loader.dart';
 import 'app_localization.dart';
 
@@ -30,6 +31,8 @@ class GameStorage {
   static bool? _cachedHintTutorialShown;
   static bool? _cachedExtraWordsTutorialShown;
   static bool? _cachedRocketTutorialShown;
+  static bool? _cachedLevel5FreeHintUsed;
+  static bool? _cachedLevel7FreeRocketUsed;
   static bool? _cachedHasCompletedFirstSession;
 
   static bool? _cachedInfiniteBoosters;
@@ -43,6 +46,13 @@ class GameStorage {
 
   static bool? _cachedNoAdsPurchased;
   static final ValueNotifier<bool> noAdsNotifier = ValueNotifier<bool>(false);
+
+  static bool? _cachedFirebaseAnalyticsTest;
+  static final ValueNotifier<bool> firebaseAnalyticsTestNotifier = ValueNotifier<bool>(false);
+
+  static bool? _cachedHasEverSeenNoAdsPopup;
+  static bool? _cachedHasWatchedInterEndgame;
+  static int _sessionCount = 1;
 
   static Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
@@ -65,6 +75,8 @@ class GameStorage {
     _cachedHintTutorialShown = _prefs.getBool('hint_tutorial_shown') ?? false;
     _cachedExtraWordsTutorialShown = _prefs.getBool('extra_words_tutorial_shown') ?? false;
     _cachedRocketTutorialShown = _prefs.getBool('rocket_tutorial_shown') ?? false;
+    _cachedLevel5FreeHintUsed = _prefs.getBool('level_5_free_hint_used') ?? false;
+    _cachedLevel7FreeRocketUsed = _prefs.getBool('level_7_free_rocket_used') ?? false;
     _cachedHasCompletedFirstSession = _prefs.getBool('has_completed_first_session') ?? false;
 
     _cachedInfiniteBoosters = _prefs.getBool('cheat_infinite_boosters') ?? false;
@@ -78,6 +90,14 @@ class GameStorage {
 
     _cachedNoAdsPurchased = _prefs.getBool('is_no_ads_purchased') ?? false;
     noAdsNotifier.value = _cachedNoAdsPurchased!;
+
+    _cachedFirebaseAnalyticsTest = _prefs.getBool('cheat_firebase_analytics_test_enabled') ?? false;
+    firebaseAnalyticsTestNotifier.value = _cachedFirebaseAnalyticsTest!;
+
+    _cachedHasEverSeenNoAdsPopup = _prefs.getBool('has_ever_seen_no_ads_popup') ?? false;
+    _cachedHasWatchedInterEndgame = _prefs.getBool('has_watched_inter_endgame') ?? false;
+    _sessionCount = (_prefs.getInt('app_session_count') ?? 0) + 1;
+    await _prefs.setInt('app_session_count', _sessionCount);
 
     final hasUserSelected = _prefs.getBool('has_user_selected_language') ?? false;
     if (!hasUserSelected && !_prefs.containsKey('selected_language')) {
@@ -478,6 +498,82 @@ class GameStorage {
     await _prefs.setBool('rocket_tutorial_shown', shown);
   }
 
+  // Free Booster Retention (Level 5 Hint & Level 7 Rocket)
+  static bool hasUsedLevel5FreeHint() {
+    return _cachedLevel5FreeHintUsed ?? _prefs.getBool('level_5_free_hint_used') ?? false;
+  }
+
+  static Future<void> setLevel5FreeHintUsed(bool used) async {
+    _cachedLevel5FreeHintUsed = used;
+    await _prefs.setBool('level_5_free_hint_used', used);
+  }
+
+  static bool hasUsedLevel7FreeRocket() {
+    return _cachedLevel7FreeRocketUsed ?? _prefs.getBool('level_7_free_rocket_used') ?? false;
+  }
+
+  static Future<void> setLevel7FreeRocketUsed(bool used) async {
+    _cachedLevel7FreeRocketUsed = used;
+    await _prefs.setBool('level_7_free_rocket_used', used);
+  }
+
+  // Mid-Level Progress Persistence
+  static Future<void> saveLevelProgress({
+    required String language,
+    required int levelNumber,
+    required Set<String> solvedWords,
+    required Set<String> foundExtraWords,
+    required List<List<LetterTile>> grid,
+    int invalidAttempts = 0,
+    int boostersUsed = 0,
+    int comboStreak = 0,
+  }) async {
+    final key = 'level_progress_${language}_$levelNumber';
+    final gridData = grid.map((row) {
+      return row.map((tile) => {
+        'row': tile.row,
+        'col': tile.col,
+        'letter': tile.letter,
+        'count': tile.count,
+        'initialCount': tile.initialCount,
+        'isCleared': tile.isCleared,
+        'isObstacleLocked': tile.isObstacleLocked,
+        'obstacleReq': tile.obstacleRequiredWords,
+      }).toList();
+    }).toList();
+
+    final data = {
+      'levelNumber': levelNumber,
+      'solvedTargetWords': solvedWords.toList(),
+      'foundExtraWords': foundExtraWords.toList(),
+      'invalidAttempts': invalidAttempts,
+      'boostersUsed': boostersUsed,
+      'comboStreak': comboStreak,
+      'grid': gridData,
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+    };
+
+    await _prefs.setString(key, jsonEncode(data));
+  }
+
+  static Map<String, dynamic>? getLevelProgress(String language, int levelNumber) {
+    final key = 'level_progress_${language}_$levelNumber';
+    final str = _prefs.getString(key);
+    if (str == null || str.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(str);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  static Future<void> clearLevelProgress(String language, int levelNumber) async {
+    final key = 'level_progress_${language}_$levelNumber';
+    await _prefs.remove(key);
+  }
+
   // No Ads Status
   static bool isNoAdsPurchased() {
     _cachedNoAdsPurchased ??= _prefs.getBool('is_no_ads_purchased') ?? false;
@@ -488,6 +584,36 @@ class GameStorage {
     _cachedNoAdsPurchased = value;
     noAdsNotifier.value = value;
     await _prefs.setBool('is_no_ads_purchased', value);
+  }
+
+  // No Ads Popup Seen State (Case 1 gatekeeper: user has seen popup anywhere)
+  static bool hasEverSeenNoAdsPopup() {
+    _cachedHasEverSeenNoAdsPopup ??= _prefs.getBool('has_ever_seen_no_ads_popup') ?? false;
+    return _cachedHasEverSeenNoAdsPopup!;
+  }
+
+  static Future<void> setHasEverSeenNoAdsPopup(bool seen) async {
+    _cachedHasEverSeenNoAdsPopup = seen;
+    await _prefs.setBool('has_ever_seen_no_ads_popup', seen);
+  }
+
+  // Inter Endgame Watched State (Case 1 condition: user has completed >= 1 endgame inter)
+  static bool hasWatchedInterEndgame() {
+    _cachedHasWatchedInterEndgame ??= _prefs.getBool('has_watched_inter_endgame') ?? false;
+    return _cachedHasWatchedInterEndgame!;
+  }
+
+  static Future<void> setHasWatchedInterEndgame(bool watched) async {
+    _cachedHasWatchedInterEndgame = watched;
+    await _prefs.setBool('has_watched_inter_endgame', watched);
+  }
+
+  // App Session Counter (Session 1 -> N=10, Session >= 2 -> N=5)
+  static int getSessionCount() => _sessionCount;
+
+  @visibleForTesting
+  static void setMockSessionCount(int count) {
+    _sessionCount = count;
   }
 
   // Ads Interstitial Gatekeeper
@@ -526,6 +652,8 @@ class GameStorage {
     await _prefs.remove('hint_tutorial_shown');
     await _prefs.remove('extra_words_tutorial_shown');
     await _prefs.remove('rocket_tutorial_shown');
+    await _prefs.remove('level_5_free_hint_used');
+    await _prefs.remove('level_7_free_rocket_used');
     await _prefs.remove('has_shown_first_inter');
 
     _cachedTutorialCompleted = false;
@@ -534,6 +662,8 @@ class GameStorage {
     _cachedHintTutorialShown = false;
     _cachedExtraWordsTutorialShown = false;
     _cachedRocketTutorialShown = false;
+    _cachedLevel5FreeHintUsed = false;
+    _cachedLevel7FreeRocketUsed = false;
   }
 
   // ==========================================
@@ -560,6 +690,17 @@ class GameStorage {
     _cachedDevOverlay = enabled;
     devOverlayNotifier.value = enabled;
     await _prefs.setBool('cheat_dev_overlay_enabled', enabled);
+  }
+
+  static bool isFirebaseAnalyticsTestEnabled() {
+    _cachedFirebaseAnalyticsTest ??= _prefs.getBool('cheat_firebase_analytics_test_enabled') ?? false;
+    return _cachedFirebaseAnalyticsTest!;
+  }
+
+  static Future<void> setFirebaseAnalyticsTestEnabled(bool enabled) async {
+    _cachedFirebaseAnalyticsTest = enabled;
+    firebaseAnalyticsTestNotifier.value = enabled;
+    await _prefs.setBool('cheat_firebase_analytics_test_enabled', enabled);
   }
 
   /// Force-set current and max unlocked level progression (1-based levelNumber)

@@ -30,11 +30,20 @@ class _ShopScreenState extends State<ShopScreen> {
   void initState() {
     super.initState();
     IapManager.init();
+    IapManager.refreshPrices();
+    IapManager.pricesVersion.addListener(_onPricesUpdated);
     IapManager.logShopImpression(level: widget.currentLevel);
+  }
+
+  void _onPricesUpdated() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
+    IapManager.pricesVersion.removeListener(_onPricesUpdated);
     _scrollController.dispose();
     super.dispose();
   }
@@ -889,7 +898,7 @@ class _ShopScreenState extends State<ShopScreen> {
     return BouncyButton(
       onTap: onTap,
       child: Container(
-        width: 104.w,
+        width: 108.w,
         height: 42.h,
         decoration: BoxDecoration(
           image: DecorationImage(
@@ -906,21 +915,24 @@ class _ShopScreenState extends State<ShopScreen> {
           ),
         ),
         alignment: Alignment.center,
-        padding: EdgeInsets.only(bottom: 3.h),
-        child: Text(
-          text,
-          maxLines: 1,
-          style: AppTypography.font(
-            color: Colors.white,
-            fontSize: 15.sp,
-            fontWeight: FontWeight.w900,
-            shadows: [
-              Shadow(
-                color: isOwned ? const Color(0xFF424242) : const Color(0xFF1B5E20),
-                offset: const Offset(0, 1.5),
-                blurRadius: 1,
-              ),
-            ],
+        padding: EdgeInsets.only(bottom: 3.h, left: 6.w, right: 6.w),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            text,
+            maxLines: 1,
+            style: AppTypography.font(
+              color: Colors.white,
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w900,
+              shadows: [
+                Shadow(
+                  color: isOwned ? const Color(0xFF424242) : const Color(0xFF1B5E20),
+                  offset: const Offset(0, 1.5),
+                  blurRadius: 1,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -945,7 +957,7 @@ class _ShopScreenState extends State<ShopScreen> {
           ),
         ),
         alignment: Alignment.center,
-        padding: EdgeInsets.only(bottom: 2.5.h),
+        padding: EdgeInsets.only(bottom: 2.5.h, left: 4.w, right: 4.w),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -957,20 +969,25 @@ class _ShopScreenState extends State<ShopScreen> {
               ),
               SizedBox(width: 3.w),
             ],
-            Text(
-              text,
-              maxLines: 1,
-              style: AppTypography.font(
-                color: Colors.white,
-                fontSize: 13.sp,
-                fontWeight: FontWeight.w900,
-                shadows: const [
-                  Shadow(
-                    color: Color(0xFF1B5E20),
-                    offset: Offset(0, 1.5),
-                    blurRadius: 1,
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  text,
+                  maxLines: 1,
+                  style: AppTypography.font(
+                    color: Colors.white,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w900,
+                    shadows: const [
+                      Shadow(
+                        color: Color(0xFF1B5E20),
+                        offset: Offset(0, 1.5),
+                        blurRadius: 1,
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ],
