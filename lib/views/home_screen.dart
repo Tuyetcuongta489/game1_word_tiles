@@ -16,6 +16,9 @@ import 'widgets/bouncy_button.dart';
 import 'widgets/pressable_3d_button.dart';
 import 'widgets/settings_dialog.dart';
 import 'widgets/remove_ads_dialog.dart';
+import 'widgets/daily_login_dialog.dart';
+import 'widgets/booster_bar.dart';
+import '../services/daily_login_service.dart';
 import 'shop_screen.dart';
 import '../services/no_ads_trigger_service.dart';
 
@@ -61,7 +64,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         location: 'home_startup',
         onClosed: () {
           if (mounted) {
-            _loadState(showBanner: false);
+            _loadState(showBanner: true);
             _checkStarterPackPopup();
           }
         },
@@ -72,12 +75,20 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   }
 
   void _checkStarterPackPopup() {
-    // Reserved for Starter Pack popup if introduced in the future
+    if (DailyLoginService.canClaimToday() && !widget.isFirstSessionStart) {
+      DailyLoginDialog.show(
+        context,
+        level: _currentLevelIndex + 1,
+        onRewardClaimed: () {
+          if (mounted) setState(() {});
+        },
+      );
+    }
   }
 
   void _onLanguageChanged() {
     if (mounted) {
-      _loadState(showBanner: false);
+      _loadState(showBanner: true);
     }
   }
 
@@ -85,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final modalRoute = ModalRoute.of(context);
-    if (modalRoute != null) {
+    if (modalRoute is PageRoute) {
       routeObserver.subscribe(this, modalRoute);
     }
   }
@@ -131,7 +142,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           levelIndex: _currentLevelIndex,
         ),
       ),
-    ).then((_) => _loadState());
+    ).then((_) => _loadState(showBanner: true));
   }
 
   void _jumpToLevel(int targetLevelNumber) {
@@ -147,7 +158,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           levelIndex: index,
         ),
       ),
-    ).then((_) => _loadState());
+    ).then((_) => _loadState(showBanner: true));
   }
 
   void _openSettings() {
@@ -210,11 +221,11 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               child: Column(
                 children: [
                   _buildTopBar(),
-                  SizedBox(height: 0.1.sh), 
+                  SizedBox(height: 0.05.sh), 
                   _buildLogo(),
                   const Spacer(),
                   _buildPlayButton(levelNumber),
-                  SizedBox(height: 0.2.sh),
+                  SizedBox(height: 0.18.sh),
                 ],
               ),
             ),
@@ -226,23 +237,44 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildCoinCapsule(),
-          Row(
+          // Left: Coin Capsule and Gift Button directly under it
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              ValueListenableBuilder<bool>(
-                valueListenable: GameStorage.noAdsNotifier,
-                builder: (context, isPurchased, _) {
-                  if (isPurchased) return const SizedBox.shrink();
-                  return Padding(
-                    padding: EdgeInsets.only(right: 10.w),
-                    child: _buildNoAdsIconButton(),
-                  );
-                },
+              _buildCoinCapsule(),
+              SizedBox(height: 10.h),
+              Padding(
+                padding: EdgeInsets.only(left: 4.w),
+                child: _buildGiftButton(),
               ),
-              _buildSettingsButton(),
+            ],
+          ),
+          // Right: Remove Ads and Settings on top, Daily Button directly under Settings
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ValueListenableBuilder<bool>(
+                    valueListenable: GameStorage.noAdsNotifier,
+                    builder: (context, isPurchased, _) {
+                      if (isPurchased) return const SizedBox.shrink();
+                      return Padding(
+                        padding: EdgeInsets.only(right: 10.w),
+                        child: _buildNoAdsIconButton(),
+                      );
+                    },
+                  ),
+                  _buildSettingsButton(),
+                ],
+              ),
+              SizedBox(height: 10.h),
+              _buildDailyButton(),
             ],
           ),
         ],
@@ -259,7 +291,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           level: _currentLevelIndex + 1,
           location: 'home_icon',
           onClosed: () {
-            if (mounted) _loadState(showBanner: false);
+            if (mounted) _loadState(showBanner: true);
           },
         );
       },
@@ -287,8 +319,94 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     );
   }
 
+  Widget _buildGiftButton() {
+    return BouncyButton(
+      key: const ValueKey('home_daily_gift_button'),
+      onTap: _openShop,
+      child: SizedBox(
+        width: 50.r,
+        height: 60.r,
+        child: Stack(
+          alignment: Alignment.topCenter,
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              top: 0,
+              child: Image.asset(
+                'assets/icons/icon_gift_box.webp',
+                width: 44.r,
+                height: 44.r,
+                fit: BoxFit.contain,
+              ),
+            ),
+            Positioned(
+              bottom: 4.h,
+              child: GreenPillBadge.text(text: 'GIFT'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDailyButton() {
+    return ValueListenableBuilder<bool>(
+      valueListenable: DailyLoginService.canClaimNotifier,
+      builder: (context, canClaim, _) {
+        return BouncyButton(
+          key: const ValueKey('home_daily_login_button'),
+          onTap: () {
+            AudioManager.playTileSelect(pitchIndex: 4);
+            DailyLoginDialog.show(
+              context,
+              level: _currentLevelIndex + 1,
+              onRewardClaimed: () {
+                if (mounted) setState(() {});
+              },
+            );
+          },
+          child: SizedBox(
+            width: 50.r,
+            height: 60.r,
+            child: Stack(
+              alignment: Alignment.topCenter,
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  top: 0,
+                  child: Image.asset(
+                    'assets/icons/icon_gift_explore.webp',
+                    width: 44.r,
+                    height: 44.r,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                if (canClaim)
+                  Positioned(
+                    top: -2.h,
+                    right: 0,
+                    child: Image.asset(
+                      'assets/icons/icon_notice.webp',
+                      width: 18.r,
+                      height: 18.r,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                Positioned(
+                  bottom: 4.h,
+                  child: GreenPillBadge.text(text: 'DAILY'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildCoinCapsule() {
     return BouncyButton(
+      key: const ValueKey('home_coin_capsule'),
       onTap: _openShop,
       child: SizedBox(
         height: 44.h,

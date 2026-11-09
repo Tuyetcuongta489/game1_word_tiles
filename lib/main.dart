@@ -6,6 +6,8 @@ import 'services/ads_manager.dart';
 import 'services/analytics_service.dart';
 import 'services/analytics_toast.dart';
 import 'services/audio_manager.dart';
+import 'services/game_storage.dart';
+import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'views/loading_screen.dart';
 
@@ -30,7 +32,7 @@ void main() async {
   unawaited(AnalyticsService.initialize());
 }
 
-final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
 class WordTilesApp extends StatefulWidget {
   const WordTilesApp({super.key});
@@ -59,8 +61,14 @@ class _WordTilesAppState extends State<WordTilesApp> with WidgetsBindingObserver
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
       AudioManager.pauseBgm();
+      try {
+        final lang = GameStorage.getSelectedLanguage();
+        final currentLevel = GameStorage.getCurrentLevelIndex(lang) + 1;
+        NotificationService.scheduleRetentionReminders(currentLevel: currentLevel);
+      } catch (_) {}
     } else if (state == AppLifecycleState.resumed) {
       AudioManager.resumeBgm();
+      NotificationService.cancelAllReminders();
       AdsManager.handleAppResume();
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     }

@@ -168,6 +168,7 @@ class AppLocalization {
       'remove_ads_desc_1': 'Remove all ads permanently.',
       'remove_ads_desc_2': 'Keep ads for rewards.',
       'one_time_purchase': 'One Time Purchase',
+      'find_words_first': 'Find words first to see definitions!',
     },
 
     // 2. German / Deutsch 🇩🇪
@@ -240,6 +241,7 @@ class AppLocalization {
       'remove_ads_desc_1': 'Entferne dauerhaft alle Werbung.',
       'remove_ads_desc_2': 'Belohnungsvideos bleiben erhalten.',
       'one_time_purchase': 'Einmaliger Kauf',
+      'find_words_first': 'Finde zuerst Wörter!',
     },
 
     // 3. French / Français 🇫🇷
@@ -312,6 +314,7 @@ class AppLocalization {
       'remove_ads_desc_1': 'Supprimez définitivement les pubs.',
       'remove_ads_desc_2': 'Conservez les pubs avec récompense.',
       'one_time_purchase': 'Achat unique',
+      'find_words_first': 'Trouvez d\'abord des mots !',
     },
 
     // 4. Italian / Italiano 🇮🇹
@@ -384,6 +387,7 @@ class AppLocalization {
       'remove_ads_desc_1': 'Rimuovi definitivamente tutti gli annunci.',
       'remove_ads_desc_2': 'Mantieni gli annunci a premio.',
       'one_time_purchase': 'Acquisto una tantum',
+      'find_words_first': 'Trova prima le parole!',
     },
 
     // 5. Spanish / Español 🇪🇸
@@ -456,6 +460,7 @@ class AppLocalization {
       'remove_ads_desc_1': 'Elimina todos los anuncios para siempre.',
       'remove_ads_desc_2': 'Mantén anuncios con recompensa.',
       'one_time_purchase': 'Pago único',
+      'find_words_first': '¡Encuentra palabras primero!',
     },
 
     // 6. Portuguese / Português 🇵🇹
@@ -528,6 +533,7 @@ class AppLocalization {
       'remove_ads_desc_1': 'Remova todos os anúncios para sempre.',
       'remove_ads_desc_2': 'Mantenha os anúncios de recompensa.',
       'one_time_purchase': 'Compra única',
+      'find_words_first': 'Encontre palavras primeiro!',
     },
 
     // 7. Russian / Русский 🇷🇺
@@ -600,6 +606,7 @@ class AppLocalization {
       'remove_ads_desc_1': 'Уберите рекламу навсегда.',
       'remove_ads_desc_2': 'Оставьте рекламу за награды.',
       'one_time_purchase': 'Единоразовая покупка',
+      'find_words_first': 'Сначала найдите слова!',
     },
 
     // 8. Turkish / Türkçe 🇹🇷
@@ -672,6 +679,7 @@ class AppLocalization {
       'remove_ads_desc_1': 'Tüm reklamları kalıcı olarak kaldırın.',
       'remove_ads_desc_2': 'Ödüllü reklamları saklayın.',
       'one_time_purchase': 'Tek Seferlik Satın Alma',
+      'find_words_first': 'Önce kelimeleri bulun!',
     },
 
     // 9. Vietnamese / Tiếng Việt 🇻🇳
@@ -744,6 +752,7 @@ class AppLocalization {
       'remove_ads_desc_1': 'Xóa vĩnh viễn tất cả quảng cáo.',
       'remove_ads_desc_2': 'Vẫn giữ quảng cáo nhận thưởng.',
       'one_time_purchase': 'Thanh toán một lần',
+      'find_words_first': 'Hãy tìm từ trước để xem định nghĩa!',
     },
   };
 }

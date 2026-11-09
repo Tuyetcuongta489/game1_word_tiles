@@ -4,7 +4,7 @@ description: "A new Flutter project."
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # Version dành cho iOS (chỉnh ở đây khi build iOS bằng Xcode / Archive)
-version: 1.0.0+1
+version: 1.0.0+13
 
 environment:
   sdk: ^3.13.0
@@ -26,6 +26,8 @@ dependencies:
   firebase_core: ^4.14.0
   firebase_analytics: ^12.5.0
   firebase_crashlytics: ^5.3.0
+  flutter_local_notifications: ^22.3.2
+  timezone: ^0.11.2
 
 dev_dependencies:
   flutter_test:

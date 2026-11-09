@@ -969,6 +969,7 @@ class GameController extends ChangeNotifier {
   }
 
   void _handleVictory() {
+    if (isWon) return;
     isWinning = false;
     isWon = true;
 
@@ -1028,7 +1029,7 @@ class GameController extends ChangeNotifier {
     unawaited(GameStorage.incrementWinStreak());
     AnalyticsService.updateUserProperties(level: levelNumber);
 
-    if (levelNumber == 1) {
+    if (levelNumber == 1 && !GameStorage.isTutorialCompleted()) {
       GameStorage.setTutorialCompleted(true);
       AnalyticsService.logTutorial(name: 'tut_finish', value: 5);
     }
@@ -1441,6 +1442,8 @@ class GameController extends ChangeNotifier {
     feedbackPraise = null;
     feedbackComboMultiplier = null;
   }
+
+  void showFeedback(String message, Color color) => _showFeedback(message, color);
 
   void _showFeedback(String message, Color color) {
     _clearFeedback();

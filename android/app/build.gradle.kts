@@ -33,6 +33,7 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -93,6 +94,42 @@ android {
     }
 }
 
+fun generateBuildInfo(targetDir: File) {
+    try {
+        val rootDir = rootProject.rootDir.parentFile
+        val scriptFile = File(rootDir, "funtap_global_sdk/tools/fg-build-info.js")
+        if (scriptFile.exists()) {
+            val process = ProcessBuilder(
+                "node",
+                scriptFile.absolutePath,
+                "--project", rootDir.absolutePath,
+                "--engine", "flutter",
+                "--platform", "android",
+                "--pkg-version", "funtap-global-sdk-flutter 1.0.5",
+                "--out", targetDir.absolutePath
+            ).redirectErrorStream(true).start()
+            val output = process.inputStream.bufferedReader().readText()
+            process.waitFor()
+            println(output.trim())
+        }
+    } catch (e: Exception) {
+        println("[build-info] Auto-generate note: ${e.message}")
+    }
+}
+
+tasks.matching { it.name == "assembleRelease" }.configureEach {
+    doLast {
+        val apkReleaseDir = layout.buildDirectory.dir("outputs/apk/release").get().asFile
+        if (apkReleaseDir.exists()) {
+            generateBuildInfo(apkReleaseDir)
+        }
+        val flutterApkDir = layout.buildDirectory.dir("outputs/flutter-apk").get().asFile
+        if (flutterApkDir.exists()) {
+            generateBuildInfo(flutterApkDir)
+        }
+    }
+}
+
 tasks.matching { it.name.startsWith("bundle") && it.name.endsWith("Bundle") }.configureEach {
     doLast {
         val date = SimpleDateFormat("yyyyMMdd").format(Date())
@@ -107,6 +144,7 @@ tasks.matching { it.name.startsWith("bundle") && it.name.endsWith("Bundle") }.co
                     aabFile.copyTo(targetFile, overwrite = true)
                 }
             }
+            generateBuildInfo(bundleDir)
         }
     }
 }
@@ -122,6 +160,8 @@ flutter {
 }
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+
     // AppLovin MAX Mediation Adapters (14 networks for Game Client)
     implementation("com.applovin.mediation:google-adapter:+")
     implementation("com.applovin.mediation:google-ad-manager-adapter:+")

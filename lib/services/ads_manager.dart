@@ -22,7 +22,10 @@ class AdsManager {
   static DateTime? _showingAdStartTime;
   static bool _adWasClicked = false;
   static bool _isRewardedLoaded = false;
+  static bool _isAppOpenLoaded = false;
+  static bool _isInterLoaded = false;
   static bool _isIapInProgress = false;
+  static bool _isSplashInProgress = false;
   static bool _suppressNextResumeAd = false;
   static DateTime? _lastIapTime;
   static Timer? _retryLoadTimer;
@@ -38,11 +41,26 @@ class AdsManager {
   /// Whether a rewarded ad is confirmed loaded and ready
   static bool get isRewardedLoaded => _isRewardedLoaded;
 
+  /// Whether an App Open ad is confirmed loaded and ready
+  static bool get isAppOpenLoaded => _isAppOpenLoaded;
+
+  /// Whether an Interstitial ad is confirmed loaded and ready
+  static bool get isInterLoaded => _isInterLoaded;
+
   /// Time since last Inter or Resume ad was closed
   static DateTime? get lastInterOrResumeTime => _lastInterOrResumeTime;
 
   /// Check if an IAP checkout flow is currently active
   static bool get isIapInProgress => _isIapInProgress;
+
+  /// Check if the Splash / LoadingScreen is currently active
+  static bool get isSplashInProgress => _isSplashInProgress;
+
+  /// Notify AdsManager whether the initial Splash / LoadingScreen is in progress
+  /// to prevent premature App Resume ads from firing during startup dialogs (e.g., ATT / Notification permission).
+  static void setSplashInProgress(bool inProgress) {
+    _isSplashInProgress = inProgress;
+  }
 
   /// Check if the next App Resume ad is suppressed due to an IAP checkout flow
   static bool get suppressNextResumeAd => _suppressNextResumeAd;
@@ -111,6 +129,34 @@ class AdsManager {
     _subscriptions.add(FGSDK.onRewardedClosed.listen((info) {
       _isRewardedLoaded = false;
       preloadRewarded();
+    }));
+
+    // Track AppOpen loading lifecycle
+    _subscriptions.add(FGSDK.onAppOpenLoaded.listen((info) {
+      debugPrint('[AdsManager] onAppOpenLoaded: placement=${info.placement}');
+      _isAppOpenLoaded = true;
+    }));
+    _subscriptions.add(FGSDK.onAppOpenFailedToLoad.listen((info) {
+      debugPrint('[AdsManager] onAppOpenFailedToLoad: placement=${info.placement}');
+      _isAppOpenLoaded = false;
+    }));
+    _subscriptions.add(FGSDK.onAppOpenClosed.listen((info) {
+      debugPrint('[AdsManager] onAppOpenClosed: placement=${info.placement}');
+      _isAppOpenLoaded = false;
+    }));
+
+    // Track Interstitial loading lifecycle
+    _subscriptions.add(FGSDK.onInterstitialLoaded.listen((info) {
+      debugPrint('[AdsManager] onInterstitialLoaded: placement=${info.placement}');
+      _isInterLoaded = true;
+    }));
+    _subscriptions.add(FGSDK.onInterstitialFailedToLoad.listen((info) {
+      debugPrint('[AdsManager] onInterstitialFailedToLoad: placement=${info.placement}');
+      _isInterLoaded = false;
+    }));
+    _subscriptions.add(FGSDK.onInterstitialClosed.listen((info) {
+      debugPrint('[AdsManager] onInterstitialClosed: placement=${info.placement}');
+      _isInterLoaded = false;
     }));
 
     // Track banner lifecycle events
@@ -381,6 +427,18 @@ class AdsManager {
     );
   }
 
+  /// Shows Rewarded ad for Daily Login Streak x2 multiplier.
+  static Future<void> showDailyLoginX2Reward({
+    required int levelNumber,
+    required Function(bool success) onRewardResult,
+  }) async {
+    await _showRewardAdInternal(
+      placement: 'daily_login_x2',
+      levelNumber: levelNumber,
+      onRewardResult: onRewardResult,
+    );
+  }
+
   @visibleForTesting
   static bool? mockRewardResult;
 
@@ -521,16 +579,100 @@ class AdsManager {
     }
   }
 
+  // ── Splash Ads (AOA or Inter on cold start / loading complete) ──────────────
+
+  /// Shows Splash App Open or Interstitial ad after LoadingScreen completes.
+  /// - Gated by No Ads purchase.
+  /// - Format determined by RemoteConfigService.adsResume (false = AOA, true = Inter).
+  /// - Times out safely after 6 seconds so user is never blocked from entering the game.
+  static Future<void> showSplashAd({int timeoutMs = 1800}) async {
+    if (!enableAds || GameStorage.isNoAdsPurchased()) return;
+
+    final showInter = RemoteConfigService.adsResume;
+    debugPrint('[AdsManager] showSplashAd: Requesting Splash ad (format: ${showInter ? "Inter" : "AOA"})...');
+
+    // Wait up to timeoutMs for the ad to finish downloading from the network if not ready yet
+    final waitStart = DateTime.now();
+    while ((showInter ? !_isInterLoaded : !_isAppOpenLoaded) &&
+        DateTime.now().difference(waitStart).inMilliseconds < timeoutMs) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+
+    final isReady = showInter ? _isInterLoaded : _isAppOpenLoaded;
+    if (!isReady) {
+      final timeoutSec = (timeoutMs / 1000).toStringAsFixed(1);
+      debugPrint('[AdsManager] Splash ad is not ready within ${timeoutSec}s timeout (format: ${showInter ? "Inter" : "AOA"}) -> proceeding to game.');
+      return;
+    }
+
+    final completer = Completer<void>();
+    StreamSubscription? closeSub;
+    StreamSubscription? failSub;
+
+    void finishAd() {
+      if (!completer.isCompleted) {
+        completer.complete();
+      }
+    }
+
+    if (showInter) {
+      closeSub = FGSDK.onInterstitialClosed.listen((_) {
+        debugPrint('[AdsManager] Splash Inter closed.');
+        finishAd();
+      });
+      failSub = FGSDK.onInterstitialFailedToShow.listen((_) {
+        debugPrint('[AdsManager] Splash Inter failed to show.');
+        finishAd();
+      });
+    } else {
+      closeSub = FGSDK.onAppOpenClosed.listen((_) {
+        debugPrint('[AdsManager] Splash AOA closed.');
+        finishAd();
+      });
+      failSub = FGSDK.onAppOpenFailedToShow.listen((_) {
+        debugPrint('[AdsManager] Splash AOA failed to show.');
+        finishAd();
+      });
+    }
+
+    try {
+      _isShowingAd = true;
+      if (showInter) {
+        AnalyticsService.logAfIntersLogicGame();
+        FGSDK.showInterstitial('splash', 'classic', 1);
+      } else {
+        FGSDK.showAppOpen('splash', 'classic', 1);
+      }
+      // Wait for user to dismiss ad or fail, with 6s safety watchdog
+      await completer.future.timeout(const Duration(seconds: 6), onTimeout: () {
+        debugPrint('[AdsManager] Splash ad timeout (6s) -> continuing to game.');
+      });
+      _recordAdCompleted();
+    } catch (e) {
+      debugPrint('[AdsManager] Error showing splash ad: $e');
+    } finally {
+      await closeSub.cancel();
+      await failSub.cancel();
+      _isShowingAd = false;
+    }
+  }
+
   // ── Resume Ads (AOA or Inter on App Resume) ───────────────────────────────
 
   /// Handles App Lifecycle Resume from background.
   /// Rule:
   /// - Preloads Rewarded Ad so it is ready if user toggled network in settings.
+  /// - Blocked while initial Splash / LoadingScreen is still running.
   /// - Blocked if returning from an ad click / external store.
   /// - Blocked until user has seen first Inter (GameStorage.hasShownFirstInter() == true).
   /// - Shares Ads_interval (25s) cooldown with Inter ads.
   /// - Format determined by Ads_resume: false = AOA, true = Inter.
   static Future<void> handleAppResume({int currentLevel = 1}) async {
+    if (_isSplashInProgress) {
+      debugPrint('[AdsManager] Resume ad skipped: Splash / LoadingScreen is still in progress.');
+      return;
+    }
+
     // 1. Always attempt to preload Rewarded Ad on App Resume
     // (Crucial: when user switches out to enable WiFi/Cellular data in settings/control center and comes back)
     preloadRewarded();
@@ -660,20 +802,29 @@ class AdsManager {
   @visibleForTesting
   static void setMockState({
     DateTime? lastAdTime,
+    bool clearLastAdTime = false,
     bool? isShowingAd,
     bool? adWasClicked,
     bool? isRewardedLoaded,
+    bool? isAppOpenLoaded,
+    bool? isInterLoaded,
     bool? isIapInProgress,
     bool? suppressNextResumeAd,
     DateTime? lastIapTime,
   }) {
-    if (lastAdTime != null) _lastInterOrResumeTime = lastAdTime;
+    if (clearLastAdTime) {
+      _lastInterOrResumeTime = null;
+    } else if (lastAdTime != null) {
+      _lastInterOrResumeTime = lastAdTime;
+    }
     if (isShowingAd != null) {
       _isShowingAd = isShowingAd;
       _showingAdStartTime = isShowingAd ? DateTime.now() : null;
     }
     if (adWasClicked != null) _adWasClicked = adWasClicked;
     if (isRewardedLoaded != null) _isRewardedLoaded = isRewardedLoaded;
+    if (isAppOpenLoaded != null) _isAppOpenLoaded = isAppOpenLoaded;
+    if (isInterLoaded != null) _isInterLoaded = isInterLoaded;
     if (isIapInProgress != null) _isIapInProgress = isIapInProgress;
     if (suppressNextResumeAd != null) _suppressNextResumeAd = suppressNextResumeAd;
     if (lastIapTime != null) _lastIapTime = lastIapTime;

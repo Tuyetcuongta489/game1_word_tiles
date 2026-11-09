@@ -1,172 +1,39 @@
-{
+﻿{
   "id": 8,
   "width": 4,
   "height": 2,
   "target_words": [
     {
-      "word": "ART",
+      "word": "ANT",
       "type": 0
     },
     {
-      "word": "SPA",
+      "word": "LET",
       "type": 0
     },
     {
-      "word": "PART",
+      "word": "TEA",
       "type": 0
     },
     {
-      "word": "PAST",
+      "word": "LEAN",
       "type": 0
     },
     {
-      "word": "PORT",
+      "word": "THAN",
       "type": 0
     },
     {
-      "word": "SORT",
+      "word": "CLEAN",
       "type": 0
     }
   ],
   "extra_words": [
     {
-      "word": "OPS",
-      "type": 0
-    },
-    {
-      "word": "ORA",
-      "type": 0
-    },
-    {
-      "word": "ORT",
-      "type": 0
-    },
-    {
-      "word": "PAR",
-      "type": 0
-    },
-    {
-      "word": "PAS",
-      "type": 0
-    },
-    {
-      "word": "RAP",
-      "type": 0
-    },
-    {
-      "word": "RAS",
-      "type": 0
-    },
-    {
-      "word": "SAP",
-      "type": 0
-    },
-    {
-      "word": "SOP",
-      "type": 0
-    },
-    {
-      "word": "ARTS",
-      "type": 0
-    },
-    {
-      "word": "ORTS",
-      "type": 0
-    },
-    {
-      "word": "RAPS",
-      "type": 0
-    },
-    {
-      "word": "SAPS",
-      "type": 0
-    },
-    {
-      "word": "SOPS",
-      "type": 0
-    },
-    {
-      "word": "SORA",
-      "type": 0
-    },
-    {
-      "word": "SPAR",
-      "type": 0
-    },
-    {
-      "word": "SPAS",
-      "type": 0
-    },
-    {
-      "word": "TRAP",
-      "type": 0
-    },
-    {
-      "word": "TROP",
-      "type": 0
-    },
-    {
-      "word": "TSAR",
-      "type": 0
-    },
-    {
-      "word": "APORT",
-      "type": 0
-    },
-    {
-      "word": "PARTS",
-      "type": 0
-    },
-    {
-      "word": "PORTS",
-      "type": 0
-    },
-    {
-      "word": "SAPOR",
-      "type": 0
-    },
-    {
-      "word": "SAROS",
-      "type": 0
-    },
-    {
-      "word": "SORAS",
-      "type": 0
-    },
-    {
-      "word": "SORTS",
-      "type": 0
-    },
-    {
-      "word": "SPORT",
-      "type": 0
-    },
-    {
-      "word": "STRAP",
-      "type": 0
-    },
-    {
-      "word": "STROP",
-      "type": 0
-    },
-    {
-      "word": "TRAPS",
-      "type": 0
-    },
-    {
-      "word": "SPORTS",
-      "type": 0
-    },
-    {
-      "word": "STRAPS",
-      "type": 0
-    },
-    {
-      "word": "STROPS",
-      "type": 0
+      "word": "LEANT",
+      "type": 1
     }
   ],
-  "letters": "SORT,SPAS",
-  "counts": "1245,1441",
+  "letters": "LEAN,CTHT",
   "obstacles": []
 }

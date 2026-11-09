@@ -1,132 +1,47 @@
-{
+﻿{
   "id": 19,
   "width": 4,
   "height": 3,
   "target_words": [
     {
-      "word": "AIR",
+      "word": "FAR",
       "type": 0
     },
     {
-      "word": "HEY",
+      "word": "LOW",
       "type": 0
     },
     {
-      "word": "BUSH",
+      "word": "RAT",
       "type": 0
     },
     {
-      "word": "HAIR",
+      "word": "TWO",
       "type": 0
     },
     {
-      "word": "SITE",
+      "word": "DOLL",
+      "type": 0
+    },
+    {
+      "word": "FELL",
+      "type": 0
+    },
+    {
+      "word": "LEAD",
+      "type": 0
+    },
+    {
+      "word": "FELLOW",
       "type": 0
     }
   ],
   "extra_words": [
     {
-      "word": "AIS",
-      "type": 0
-    },
-    {
-      "word": "AIT",
-      "type": 0
-    },
-    {
-      "word": "BUR",
-      "type": 0
-    },
-    {
-      "word": "BUS",
-      "type": 0
-    },
-    {
-      "word": "BYE",
-      "type": 0
-    },
-    {
-      "word": "ETH",
-      "type": 0
-    },
-    {
-      "word": "HAE",
-      "type": 0
-    },
-    {
-      "word": "RIA",
-      "type": 0
-    },
-    {
-      "word": "RUB",
-      "type": 0
-    },
-    {
-      "word": "RYE",
-      "type": 0
-    },
-    {
-      "word": "SIR",
-      "type": 0
-    },
-    {
-      "word": "SIT",
-      "type": 0
-    },
-    {
-      "word": "SUB",
-      "type": 0
-    },
-    {
-      "word": "TEA",
-      "type": 0
-    },
-    {
-      "word": "TIS",
-      "type": 0
-    },
-    {
-      "word": "YEH",
-      "type": 0
-    },
-    {
-      "word": "AIRY",
-      "type": 0
-    },
-    {
-      "word": "BURY",
-      "type": 0
-    },
-    {
-      "word": "ETHS",
-      "type": 0
-    },
-    {
-      "word": "HAET",
-      "type": 0
-    },
-    {
-      "word": "RITE",
-      "type": 0
-    },
-    {
-      "word": "RUBY",
-      "type": 0
-    },
-    {
-      "word": "RUSH",
-      "type": 0
-    },
-    {
-      "word": "SITH",
-      "type": 0
-    },
-    {
-      "word": "HAIRY",
+      "word": "TAR",
       "type": 0
     }
   ],
-  "letters": "EHAE,YRIT,BUSH",
-  "counts": "1221,1231,1121",
+  "letters": "RATW,AADO,FELL",
   "obstacles": []
 }

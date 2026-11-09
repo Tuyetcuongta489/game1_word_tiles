@@ -224,6 +224,7 @@ isInterstitial:(BOOL)isInterstitial
     GADBannerView *_bannerView;
     FGAdmobBannerProxy *_bannerProxy;
     BOOL _isBannerLoaded;
+    BOOL _isBannerShowing;
     GADBannerView *_mrecView;
     FGAdmobBannerProxy *_mrecProxy;
     BOOL _mrecCreated;
@@ -606,6 +607,15 @@ isInterstitial:(BOOL)isInterstitial
         proxy.onLoaded = ^{
             FGAdmobAdsProvider *s = weakSelf; if (!s) return;
             s->_isBannerLoaded = YES;
+            if (s->_isBannerShowing) {
+                view.hidden = NO;
+                UIWindow *curWin = [FGViewControllerTracker keyWindow];
+                if (view.superview != curWin && curWin != nil) {
+                    [view removeFromSuperview];
+                    [curWin addSubview:view];
+                }
+                if (view.superview) [view.superview bringSubviewToFront:view];
+            }
             // Banner request_count = 0 (spec §8).
             FGAdmobLogRequest(s->_bannerCtx, FGConstValue.Banner, YES, @"",
                               FGAdmobSecs(s->_bannerLoadStart), 0, unitId);
@@ -615,6 +625,7 @@ isInterstitial:(BOOL)isInterstitial
         proxy.onLoadFailed = ^(NSError *error) {
             FGAdmobAdsProvider *s = weakSelf; if (!s) return;
             s->_isBannerLoaded = NO;
+            // Keep _isBannerShowing = YES so when retry/reload succeeds it unhides automatically
             FGAdmobLogRequest(s->_bannerCtx, FGConstValue.Banner, NO,
                               [FGAdmobError mapToReason:error.code],
                               FGAdmobSecs(s->_bannerLoadStart), 0, unitId);
@@ -655,9 +666,26 @@ isInterstitial:(BOOL)isInterstitial
     if (FGInternalData.IsRemoveAds || !_isInitialized) return;
     _bannerCtx.set(playMode, currentLevel, placement, params);
     [FGMainThreadDispatcher enqueue:^{
+        self->_isBannerShowing = YES;
+        UIWindow *win = [FGViewControllerTracker keyWindow];
+        if (win == nil) return;
+
         GADBannerView *v = self->_bannerView;
         if (v == nil) { [self loadBanner]; return; }
+
+        if (v.superview != win) {
+            [v removeFromSuperview];
+            [win addSubview:v];
+        }
+
+        CGRect b = win.bounds;
+        CGFloat h = 50;
+        v.frame = CGRectMake(0, b.size.height - h, b.size.width, h);
+
         v.hidden = NO;
+        [win bringSubviewToFront:v];
+        [v loadRequest:[GADRequest request]];
+
         FGPublicEvent::Banner.Shown.invoke(
             FGAdmobErrInfo(self->_config.banner.adUnitId ?: @"", FGConstValue.Banner, placement));
     }];
@@ -665,6 +693,7 @@ isInterstitial:(BOOL)isInterstitial
 
 - (void)hideBanner {
     [FGMainThreadDispatcher enqueue:^{
+        self->_isBannerShowing = NO;
         if (self->_bannerView != nil) self->_bannerView.hidden = YES;
         // Kotlin: Hidden invoke cả khi bannerView null — mirror.
         FGPublicEvent::Banner.Hidden.invoke(

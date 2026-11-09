@@ -1,104 +1,47 @@
-{
+﻿{
   "id": 9,
   "width": 3,
   "height": 3,
   "target_words": [
     {
-      "word": "ART",
+      "word": "ERA",
       "type": 0
     },
     {
-      "word": "NET",
+      "word": "SHY",
       "type": 0
     },
     {
-      "word": "TEN",
+      "word": "SUM",
       "type": 0
     },
     {
-      "word": "FLAG",
+      "word": "HARE",
       "type": 0
     },
     {
-      "word": "NEAR",
+      "word": "SHARE",
       "type": 0
     },
     {
-      "word": "ORAL",
+      "word": "SUMMER",
       "type": 0
     }
   ],
   "extra_words": [
     {
-      "word": "EAR",
+      "word": "ARE",
       "type": 0
     },
     {
-      "word": "ENG",
+      "word": "HAREM",
       "type": 0
     },
     {
-      "word": "GAE",
-      "type": 0
-    },
-    {
-      "word": "GAL",
-      "type": 0
-    },
-    {
-      "word": "GAR",
-      "type": 0
-    },
-    {
-      "word": "LAG",
-      "type": 0
-    },
-    {
-      "word": "LAR",
-      "type": 0
-    },
-    {
-      "word": "ORA",
-      "type": 0
-    },
-    {
-      "word": "ORT",
-      "type": 0
-    },
-    {
-      "word": "RAG",
-      "type": 0
-    },
-    {
-      "word": "TEA",
-      "type": 0
-    },
-    {
-      "word": "GAEN",
-      "type": 0
-    },
-    {
-      "word": "ROLF",
-      "type": 0
-    },
-    {
-      "word": "TEAL",
-      "type": 0
-    },
-    {
-      "word": "TEAR",
-      "type": 0
-    },
-    {
-      "word": "FLORA",
-      "type": 0
-    },
-    {
-      "word": "FLORAE",
-      "type": 0
+      "word": "MUSH",
+      "type": 1
     }
   ],
-  "letters": "OLF,RAG,TEN",
-  "counts": "121,341,333",
+  "letters": "MME,UYR,SHA",
   "obstacles": []
 }

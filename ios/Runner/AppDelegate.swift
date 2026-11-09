@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import AdSupport
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -21,6 +22,10 @@ import UIKit
       UserDefaults.standard.set(true, forKey: "/google/measurement/debug_mode")
       UserDefaults.standard.synchronize()
       print("[AppDelegate] Firebase Analytics DebugView is ENABLED for TestFlight/Debug.")
+
+      let idfa = ASIdentifierManager.shared().advertisingIdentifier.uuidString
+      let idfv = UIDevice.current.identifierForVendor?.uuidString ?? "N/A"
+      print("[AppDelegate] Test Device Info -> IDFA: \(idfa), IDFV: \(idfv)")
     } else {
       UserDefaults.standard.removeObject(forKey: "/google/firebase/debug_mode")
       UserDefaults.standard.removeObject(forKey: "/google/measurement/debug_mode")

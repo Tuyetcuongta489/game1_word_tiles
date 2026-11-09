@@ -7,8 +7,14 @@ import 'app_localization.dart';
 
 class GameStorage {
   static late SharedPreferences _prefs;
+  static SharedPreferences get prefs => _prefs;
   static bool _isInitialized = false;
   static bool get isInitialized => _isInitialized;
+
+  static int getHints() => getHintCount();
+  static Future<void> addHints(int amount) => addHintCount(amount);
+  static int getRockets() => getRocketCount();
+  static Future<void> addRockets(int amount) => addRocketCount(amount);
 
   static String? _cachedLanguage;
   static final ValueNotifier<String> languageNotifier = ValueNotifier<String>('english');
@@ -750,6 +756,17 @@ class GameStorage {
     } else {
       await _prefs.setBool('cheat_tutorial_tap_outside', value);
     }
+  }
+
+  // Dictionary Caching
+  static String? getCachedWordDefinition(String word) {
+    if (!_isInitialized) return null;
+    return _prefs.getString('dict_cache_${word.toLowerCase().trim()}');
+  }
+
+  static Future<void> setCachedWordDefinition(String word, String jsonString) async {
+    if (!_isInitialized) return;
+    await _prefs.setString('dict_cache_${word.toLowerCase().trim()}', jsonString);
   }
 
   /// Wipe all game data and reset to fresh installation state

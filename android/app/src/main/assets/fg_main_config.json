@@ -151,7 +151,8 @@
       },
       "primaryProvider": 0,
       "max_sdk_key": "UveqekOCl9KX2vr_pPcKksAfavCvdDo6SKup4CArLZgqBOMc7n1olIcWugw3gexsimiopaBhA55sNDfZQq0LCl",
-      "google_admob_app_id": "ca-app-pub-6221062690273747~4561692924"
+      "google_admob_app_id": "ca-app-pub-6221062690273747~4561692924",
+      "admob_inter_splash_id": "ca-app-pub-6221062690273747/2068225670"
     },
     "facebook_configs": {
       "app_id": "",
@@ -174,9 +175,20 @@
     "package_name": "com.fw.word.connect.puzzle"
   },
   "listDevice": [
+    "9b9adf1ff856a2f3bffafdf77481575d",
+    "EC319E55-49BB-4561-ABAC-0000444CB0C5",
+    "ec319e55-49bb-4561-abac-0000444cb0c5",
     "0ae602113bb710a9c4f6870eb7b4ba28c8a73443",
     "b09a494e-1e44-4f70-a70d-e7ae0301b43e",
     "5694ed85-805f-4893-9c01-b4d411f63182",
-    "974e20e2-6ef0-41ca-a5b4-8daf881eefd1"
+    "974e20e2-6ef0-41ca-a5b4-8daf881eefd1",
+    "00008120-000150442E44201E",
+    "8A6080EA-27BA-5162-A6CE-6C190338E96C",
+    "8a6080ea-27ba-5162-a6ce-6c190338e96c",
+    "8CF93311-37A4-4BCA-B04E-DFE797087E90",
+    "8E8AF617-C49F-4815-A66D-685E122D3876",
+    "8e8af617-c49f-4815-a66d-685e122d3876",
+    "7DF9FA40-01A3-4552-AABB-4012BA538910",
+    "7df9fa40-01a3-4552-aabb-4012ba538910"
   ]
 }

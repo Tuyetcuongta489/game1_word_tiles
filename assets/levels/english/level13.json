@@ -1,52 +1,55 @@
-{
+﻿{
   "id": 13,
   "width": 4,
   "height": 2,
   "target_words": [
     {
-      "word": "DEL",
-      "type": 0
-    },
-    {
       "word": "LED",
       "type": 0
     },
     {
-      "word": "HIDE",
+      "word": "MOD",
       "type": 0
     },
     {
-      "word": "LACK",
+      "word": "ODE",
       "type": 0
+    },
+    {
+      "word": "ISLE",
+      "type": 0
+    },
+    {
+      "word": "MODE",
+      "type": 0
+    },
+    {
+      "word": "SLED",
+      "type": 0
+    },
+    {
+      "word": "MODEL",
+      "type": 0
+    },
+    {
+      "word": "WISDOM",
+      "type": 2
     }
   ],
   "extra_words": [
     {
-      "word": "ALE",
+      "word": "LEDS",
       "type": 0
     },
     {
-      "word": "ELK",
+      "word": "MODELS",
       "type": 0
     },
     {
-      "word": "HID",
-      "type": 0
-    },
-    {
-      "word": "KHI",
-      "type": 0
-    },
-    {
-      "word": "LAC",
-      "type": 0
-    },
-    {
-      "word": "CALK",
+      "word": "MODS",
       "type": 0
     }
   ],
-  "letters": "CKHI,ALED",
-  "counts": "1111,1333",
+  "letters": "MODE,WISL",
   "obstacles": []
 }

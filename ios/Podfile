@@ -30,6 +30,23 @@ target 'Runner' do
   use_frameworks! :linkage => :static
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+
+  # AppLovin MAX Mediation Adapters (14 networks matching Android build.gradle.kts)
+  pod 'AppLovinMediationBidMachineAdapter', '3.8.2.0.0'
+  pod 'AppLovinMediationBigoAdsAdapter', '6.1.0.1'
+  pod 'AppLovinMediationByteDanceAdapter', '8.3.0.9.0'
+  pod 'AppLovinMediationFacebookAdapter', '6.22.0.4'
+  pod 'AppLovinMediationFyberAdapter', '8.5.1.0'
+  pod 'AppLovinMediationGoogleAdapter', '13.11.0.0'
+  pod 'AppLovinMediationGoogleAdManagerAdapter', '13.11.0.0'
+  pod 'AppLovinMediationInMobiAdapter', '11.5.0.0'
+  pod 'AppLovinMediationIronSourceAdapter', '9.6.1.0.0'
+  pod 'AppLovinMediationMintegralAdapter', '8.1.7.0.1'
+  pod 'AppLovinMediationMolocoAdapter', '4.11.1.0'
+  pod 'AppLovinMediationUnityAdsAdapter', '4.21.0.0'
+  pod 'AppLovinMediationVungleAdapter', '7.7.8.0'
+  pod 'AppLovinMediationYandexAdapter', '8.6.0.0'
+
   target 'RunnerTests' do
     inherit! :search_paths
   end

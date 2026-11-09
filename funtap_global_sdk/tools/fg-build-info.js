@@ -100,6 +100,38 @@ function pod(map, name) {
     return '';
 }
 
+var MAX_ADAPTERS = [
+    { name: 'BidMachine',       androidKey: 'bidmachine-adapter',        iosPod: 'AppLovinMediationBidMachineAdapter' },
+    { name: 'BigoAds',          androidKey: 'bigoads-adapter',           iosPod: 'AppLovinMediationBigoAdsAdapter' },
+    { name: 'ByteDance/Pangle', androidKey: 'bytedance-adapter',         iosPod: 'AppLovinMediationByteDanceAdapter' },
+    { name: 'Facebook/Meta',    androidKey: 'facebook-adapter',          iosPod: 'AppLovinMediationFacebookAdapter' },
+    { name: 'Fyber/DTExchange', androidKey: 'fyber-adapter',             iosPod: 'AppLovinMediationFyberAdapter' },
+    { name: 'Google AdMob',     androidKey: 'google-adapter',            iosPod: 'AppLovinMediationGoogleAdapter' },
+    { name: 'Google AdManager', androidKey: 'google-ad-manager-adapter', iosPod: 'AppLovinMediationGoogleAdManagerAdapter' },
+    { name: 'InMobi',           androidKey: 'inmobi-adapter',            iosPod: 'AppLovinMediationInMobiAdapter' },
+    { name: 'IronSource',       androidKey: 'ironsource-adapter',        iosPod: 'AppLovinMediationIronSourceAdapter' },
+    { name: 'Mintegral',        androidKey: 'mintegral-adapter',         iosPod: 'AppLovinMediationMintegralAdapter' },
+    { name: 'Moloco',           androidKey: 'moloco-adapter',            iosPod: 'AppLovinMediationMolocoAdapter' },
+    { name: 'UnityAds',         androidKey: 'unityads-adapter',          iosPod: 'AppLovinMediationUnityAdsAdapter' },
+    { name: 'Vungle/Liftoff',   androidKey: 'vungle-adapter',            iosPod: 'AppLovinMediationVungleAdapter' },
+    { name: 'Yandex',           androidKey: 'yandex-adapter',            iosPod: 'AppLovinMediationYandexAdapter' }
+];
+
+function androidAdapters(projectRoot) {
+    var out = {};
+    var gradle = readText(firstExisting([
+        path.join(projectRoot, 'android', 'app', 'build.gradle.kts'),
+        path.join(projectRoot, 'android', 'app', 'build.gradle'),
+        path.join(projectRoot, 'build', 'android', 'proj', 'app', 'build.gradle')
+    ]));
+    if (!gradle) return out;
+    var re = /implementation\s*\(\s*["']com\.applovin\.mediation:([^"':]+):?([^"']*)["']\s*\)/g, m;
+    while ((m = re.exec(gradle)) !== null) {
+        out[m[1]] = m[2] || '+';
+    }
+    return out;
+}
+
 // ── thông tin app theo engine ────────────────────────────────────────────────
 function appInfo(ctx) {
     var out = { packageName: '', appName: '', appVersion: '' };
@@ -262,6 +294,18 @@ function render(ctx) {
     info.push('Ad units          :');
     maxUnits(info, '[Android]', and);
     maxUnits(info, '[iOS]', ios);
+    info.push('');
+
+    info.push(rule());
+    info.push('APPLOVIN MAX MEDIATION ADAPTERS (14 networks)');
+    var andAdapters = androidAdapters(ctx.project);
+    MAX_ADAPTERS.forEach(function (ad) {
+        var a = andAdapters[ad.androidKey];
+        var p = pod(P, ad.iosPod);
+        var andText = a ? ('Android (' + a + ')') : 'Android (chưa gắn)';
+        var iosText = p ? ('iOS ' + p) : 'iOS (chưa gắn)';
+        info.push('- ' + pad(ad.name, 19) + ': ' + andText + ' | ' + iosText);
+    });
     info.push('');
 
     info.push(rule());

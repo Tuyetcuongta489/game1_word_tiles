@@ -294,8 +294,10 @@ static void FGMaxOnRevenue(MAAd *ad, NSString *format, const FGMaxShowCtx &c, BO
                                 builder.mediationProvider = ALMediationProviderMAX;
                                 NSArray<NSString *> *devices = [FGConfigController mainConfig].listDevice;
                                 if (devices.count > 0) {
-                                    builder.testDeviceAdvertisingIdentifiers = devices;
-                                    NSLog(@"[%@] Configured %lu test devices in ALSdk", TAG, (unsigned long)devices.count);
+                                    NSPredicate *uuidPredicate = [NSPredicate predicateWithFormat:@"SELF MATCHES[c] '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'"];
+                                    NSArray<NSString *> *validUuids = [devices filteredArrayUsingPredicate:uuidPredicate];
+                                    builder.testDeviceAdvertisingIdentifiers = validUuids;
+                                    NSLog(@"[%@] Configured %lu test devices in ALSdk (out of %lu)", TAG, (unsigned long)validUuids.count, (unsigned long)devices.count);
                                 }
                             }];
             [[ALSdk shared] initializeWithConfiguration:cfg
@@ -328,7 +330,11 @@ static void FGMaxOnRevenue(MAAd *ad, NSString *format, const FGMaxShowCtx &c, BO
         _showAOAfterAds = FGEvent::RemoteConfig::GetBool ? FGEvent::RemoteConfig::GetBool(@"showAOAfterAds", NO) : NO;
     }
     FGEvent::InitEvent::ApplovinInitComplete.invoke();
-    [self registerCallbacks];
+    @try {
+        [self registerCallbacks];
+    } @catch (NSException *e) {
+        NSLog(@"[%@] registerCallbacks error: %@", TAG, e);
+    }
     _onInitialized.invoke();
     // MAX không có isBackfill (chỉ AdMob) → SetReady vô điều kiện như Kotlin.
     [FGInitStateMachine SetReady:FGInitStateAds];
@@ -361,8 +367,9 @@ static void FGMaxOnRevenue(MAAd *ad, NSString *format, const FGMaxShowCtx &c, BO
 // ── Interstitial (spec §7.5) ────────────────────────────────────────────────
 
 - (void)createInterstitial {
+    if (![self adUnits].Interstitial.EnableAds) return;
     NSString *unitId = [self adUnits].Interstitial.AdUnitID;
-    if (unitId == nil) return;
+    if (unitId == nil || unitId.length == 0) return;
     // Kotlin guard activity() — iOS MAInterstitialAd không cần Activity (tự lấy top VC khi show).
     MAInterstitialAd *ad = [[MAInterstitialAd alloc] initWithAdUnitIdentifier:unitId];
     __weak FGMaxAdsProvider *weakSelf = self;
@@ -463,8 +470,9 @@ static void FGMaxOnRevenue(MAAd *ad, NSString *format, const FGMaxShowCtx &c, BO
 // ── Rewarded (spec §7.5 — không guard IsRemoveAds) ──────────────────────────
 
 - (void)createRewarded {
+    if (![self adUnits].Rewarded.EnableAds) return;
     NSString *unitId = [self adUnits].Rewarded.AdUnitID;
-    if (unitId == nil) return;
+    if (unitId == nil || unitId.length == 0) return;
     MARewardedAd *ad = [MARewardedAd sharedWithAdUnitIdentifier:unitId];
     __weak FGMaxAdsProvider *weakSelf = self;
     FGMaxDelegateProxy *proxy = [FGMaxDelegateProxy new];
@@ -596,7 +604,16 @@ static void FGMaxOnRevenue(MAAd *ad, NSString *format, const FGMaxShowCtx &c, BO
         proxy.onLoaded = ^(MAAd *a) {
             FGMaxAdsProvider *s = weakSelf; if (!s) return;
             s->_isBannerLoaded = YES;
-            if (s->_isBannerAutoShow) { view.hidden = NO; s->_isBannerShowing = YES; }
+            if (s->_isBannerAutoShow || s->_isBannerShowing) {
+                view.hidden = NO;
+                s->_isBannerShowing = YES;
+                UIWindow *curWin = [FGViewControllerTracker keyWindow];
+                if (view.superview != curWin && curWin != nil) {
+                    [view removeFromSuperview];
+                    [curWin addSubview:view];
+                }
+                if (view.superview) [view.superview bringSubviewToFront:view];
+            }
             // Banner request_count = 0 (spec §8).
             FGMaxLogRequest(s->_bannerCtx, FGConstValue.Banner, YES, @"", FGMaxSecs(s->_bannerLoadStart),
                             0, a.networkName ?: @"unknown", unitId);
@@ -605,8 +622,7 @@ static void FGMaxOnRevenue(MAAd *ad, NSString *format, const FGMaxShowCtx &c, BO
         proxy.onLoadFailed = ^(NSString *adUnitIdentifier, MAError *error) {
             FGMaxAdsProvider *s = weakSelf; if (!s) return;
             s->_isBannerLoaded = NO;
-            s->_isBannerShowing = NO;
-            // ⚠️ quirk §16-3: reload thành công sau fail KHÔNG set lại isBannerShowing.
+            // Keep _isBannerShowing = YES so when retry/reload succeeds it unhides automatically
             FGMaxLogRequest(s->_bannerCtx, FGConstValue.Banner, NO, [FGMaxError classifyLoad:error.code],
                             FGMaxSecs(s->_bannerLoadStart), 0, @"unknown", unitId);
             FGPublicEvent::Banner.FailedToLoad.invoke(FGMaxErrInfo(unitId, FGConstValue.Banner, s->_bannerCtx.location));
@@ -643,11 +659,27 @@ static void FGMaxOnRevenue(MAAd *ad, NSString *format, const FGMaxShowCtx &c, BO
     if (FGInternalData.IsRemoveAds || !_isInitialized) return;
     _bannerCtx.set(playMode, currentLevel, placement, params);
     [FGMainThreadDispatcher enqueue:^{
+        self->_isBannerShowing = YES;
+        UIWindow *win = [FGViewControllerTracker keyWindow];
+        if (win == nil) return;
+
         MAAdView *v = self->_bannerView;
         if (v == nil) { [self loadBanner]; return; }
+
+        if (v.superview != win) {
+            [v removeFromSuperview];
+            [win addSubview:v];
+        }
+
+        CGRect b = win.bounds;
+        CGFloat h = 50;
+        v.frame = CGRectMake(0, b.size.height - h, b.size.width, h);
+
         v.hidden = NO;
+        [win bringSubviewToFront:v];
         [v startAutoRefresh];
-        self->_isBannerShowing = YES;
+        [v loadAd];
+
         FGPublicEvent::Banner.Shown.invoke(
             FGMaxErrInfo([self adUnits].Banner.AdUnitID ?: @"", FGConstValue.Banner, placement));
     }];
@@ -668,8 +700,9 @@ static void FGMaxOnRevenue(MAAd *ad, NSString *format, const FGMaxShowCtx &c, BO
 // ── AppOpen (spec §7.5 — gate bởi openAppAction) ────────────────────────────
 
 - (void)createAppOpen {
+    if (![self adUnits].AppOpen.EnableAds) return;
     NSString *unitId = [self adUnits].AppOpen.AdUnitID;
-    if (unitId == nil) return;
+    if (unitId == nil || unitId.length == 0) return;
     // Kotlin fallback activity()/appContext — iOS MAAppOpenAd không cần Context.
     MAAppOpenAd *ad = [[MAAppOpenAd alloc] initWithAdUnitIdentifier:unitId];
     __weak FGMaxAdsProvider *weakSelf = self;

@@ -1,36 +1,26 @@
-{
+﻿{
   "id": 17,
   "width": 4,
   "height": 2,
   "target_words": [
     {
-      "word": "AID",
+      "word": "DUG",
       "type": 0
     },
     {
-      "word": "DEAD",
+      "word": "DIVE",
       "type": 0
     },
     {
-      "word": "IDEA",
+      "word": "VERB",
       "type": 0
     },
     {
-      "word": "WIDE",
+      "word": "DIVER",
       "type": 0
     }
   ],
-  "extra_words": [
-    {
-      "word": "DEW",
-      "type": 0
-    },
-    {
-      "word": "AIDE",
-      "type": 0
-    }
-  ],
-  "letters": "WIID,EDAE",
-  "counts": "1123,1232",
+  "extra_words": [],
+  "letters": "IVER,DUGB",
   "obstacles": []
 }

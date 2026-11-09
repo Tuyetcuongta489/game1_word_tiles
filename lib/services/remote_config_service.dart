@@ -16,6 +16,8 @@ class RemoteConfigService {
   static const String keyTutorialTapOutsideClose = 'tutorial_tap_outside_close';
   static const String keyCheatEnabled = 'cheat_enabled';
   static const String keyEnableCheat = 'enable_cheat';
+  static const String keyDictionaryMinLevel = 'dictionary_min_level';
+  static const String keyDictionaryEnabled = 'dictionary_enabled';
 
   // Cached values with defaults
   static int _interLevelX = 10;
@@ -25,6 +27,8 @@ class RemoteConfigService {
   static bool _adsResume = false; // false = AOA, true = Inter
   static bool _tutorialTapOutsideClose = kDebugMode; // Default true in debug for local testing, false in production
   static bool _cheatEnabled = kDebugMode; // Default true in debug for local testing, false in production
+  static int _dictionaryMinLevel = 5;
+  static bool _dictionaryEnabled = true;
 
   static int get interLevelX => _interLevelX;
   static int get adsInterval => _adsInterval;
@@ -32,6 +36,10 @@ class RemoteConfigService {
   static bool get adsReplay => _adsReplay;
   static bool get adsResume => _adsResume;
   static bool get cheatEnabled => _cheatEnabled;
+  static int get dictionaryMinLevel => _dictionaryMinLevel;
+  static bool get dictionaryEnabled => _dictionaryEnabled;
+  static bool isDictionaryAvailableForLevel(int level) =>
+      _dictionaryEnabled && level >= _dictionaryMinLevel;
   static bool get tutorialTapOutsideClose {
     final override = GameStorage.getTutorialTapOutsideOverride();
     if (override != null) return override;
@@ -44,12 +52,14 @@ class RemoteConfigService {
       final isReady = await FGSDK.isRemoteConfigReady();
       debugPrint('[RemoteConfig] isRemoteConfigReady: $isReady');
 
-      _interLevelX = await FGSDK.getRemoteConfigInt(keyInterLevelX, 10);
-      _adsInterval = await FGSDK.getRemoteConfigInt(keyAdsInterval, 25);
-      _aoaFormat = await FGSDK.getRemoteConfigBool(keyAoaFormat, false);
-      _adsReplay = await FGSDK.getRemoteConfigBool(keyAdsReplay, false);
-      _adsResume = await FGSDK.getRemoteConfigBool(keyAdsResume, false);
-      _tutorialTapOutsideClose = await FGSDK.getRemoteConfigBool(keyTutorialTapOutsideClose, false);
+      _interLevelX = await _fetchInt(keyInterLevelX, 10);
+      _adsInterval = await _fetchInt(keyAdsInterval, 25);
+      _aoaFormat = await _fetchBool(keyAoaFormat, false);
+      _adsReplay = await _fetchBool(keyAdsReplay, false);
+      _adsResume = await _fetchBool(keyAdsResume, false);
+      _tutorialTapOutsideClose = await _fetchBool(keyTutorialTapOutsideClose, false);
+      _dictionaryMinLevel = await _fetchInt(keyDictionaryMinLevel, 5);
+      _dictionaryEnabled = await _fetchBool(keyDictionaryEnabled, true);
 
       final cheat1 = await _fetchBool(keyCheatEnabled, false);
       final cheat2 = await _fetchBool(keyEnableCheat, false);
@@ -67,7 +77,9 @@ class RemoteConfigService {
         'adsReplay: $_adsReplay, '
         'adsResume: $_adsResume, '
         'tutorialTapOutsideClose: $_tutorialTapOutsideClose, '
-        'cheatEnabled: $_cheatEnabled',
+        'cheatEnabled: $_cheatEnabled, '
+        'dictionaryMinLevel: $_dictionaryMinLevel, '
+        'dictionaryEnabled: $_dictionaryEnabled',
       );
     } catch (e) {
       debugPrint('[RemoteConfig] Error fetching remote configs: $e');
@@ -91,6 +103,8 @@ class RemoteConfigService {
     bool? adsResume,
     bool? tutorialTapOutsideClose,
     bool? cheatEnabled,
+    int? dictionaryMinLevel,
+    bool? dictionaryEnabled,
   }) {
     if (interLevelX != null) _interLevelX = interLevelX;
     if (adsInterval != null) _adsInterval = adsInterval;
@@ -99,16 +113,29 @@ class RemoteConfigService {
     if (adsResume != null) _adsResume = adsResume;
     if (tutorialTapOutsideClose != null) _tutorialTapOutsideClose = tutorialTapOutsideClose;
     if (cheatEnabled != null) _cheatEnabled = cheatEnabled;
+    if (dictionaryMinLevel != null) _dictionaryMinLevel = dictionaryMinLevel;
+    if (dictionaryEnabled != null) _dictionaryEnabled = dictionaryEnabled;
   }
 
   static Future<bool> _fetchBool(String key, bool defaultValue) async {
     try {
-      final b = await FGSDK.getRemoteConfigBool(key, defaultValue);
-      if (b != defaultValue) return b;
       final s = (await FGSDK.getRemoteConfigString(key, '')).toLowerCase().trim();
+      if (s.isEmpty) return defaultValue;
       if (s == 'true' || s == '1') return true;
       if (s == 'false' || s == '0') return false;
-      return b;
+      return await FGSDK.getRemoteConfigBool(key, defaultValue);
+    } catch (_) {
+      return defaultValue;
+    }
+  }
+
+  static Future<int> _fetchInt(String key, int defaultValue) async {
+    try {
+      final s = (await FGSDK.getRemoteConfigString(key, '')).trim();
+      if (s.isEmpty) return defaultValue;
+      final parsed = int.tryParse(s);
+      if (parsed != null) return parsed;
+      return await FGSDK.getRemoteConfigInt(key, defaultValue);
     } catch (_) {
       return defaultValue;
     }

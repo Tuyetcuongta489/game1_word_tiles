@@ -123,7 +123,8 @@ class BoardWidgetState extends State<BoardWidget> with SingleTickerProviderState
   }
 
   void _handleTouch(Offset globalPos, bool isStart) {
-    if (!GameStorage.isCountTutorialShown() &&
+    if (widget.controller.levelNumber == 2 &&
+        !GameStorage.isCountTutorialShown() &&
         widget.controller.getFirstTileWithCountGreaterThanOne() != null) {
       return;
     }

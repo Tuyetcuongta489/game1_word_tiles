@@ -73,4 +73,8 @@
 -keep class com.google.common.util.concurrent.ListenableFuture { *; }
 -dontwarn com.google.common.util.concurrent.ListenableFuture
 
+# Flutter Local Notifications
+-keep class com.dexterous.flutterlocalnotifications.** { *; }
+-dontwarn com.dexterous.flutterlocalnotifications.**
+
 

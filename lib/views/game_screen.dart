@@ -26,12 +26,12 @@ import 'widgets/bouncy_button.dart';
 import 'widgets/extra_word_fly_effect.dart';
 import 'widgets/extra_words_dialog.dart';
 import 'widgets/settings_dialog.dart';
-import 'widgets/shop_dialog.dart';
 import 'shop_screen.dart';
 import 'widgets/target_words_bar.dart';
 import 'widgets/tutorial_overlay.dart';
 import 'widgets/victory_dialog.dart';
 import 'widgets/remove_ads_dialog.dart';
+import 'widgets/dictionary_dialog.dart';
 
 class GameScreen extends StatefulWidget {
   final String language;
@@ -151,6 +151,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _popupMidYNotifier.dispose();
     _controller?.removeListener(_onGameControllerStateChanged);
     _controller?.dispose();
+    AdsManager.showBanner('bottom', level: _currentLevelIndex + 1);
     super.dispose();
   }
 
@@ -236,6 +237,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         loseCount: loseCount,
       );
       AnalyticsService.updateUserProperties(level: currentLvlNumber);
+      AdsManager.hideBanner();
 
       if (_currentLevelIndex == 0 && !GameStorage.isTutorialCompleted()) {
         AnalyticsService.logTutorial(name: 'tut_start', value: 3);
@@ -358,19 +360,45 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         ),
       ),
     ).then((_) {
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+        AdsManager.hideBanner();
+      }
     });
   }
 
   void _openDailyGift() {
-    AudioManager.playTileSelect(pitchIndex: 4);
-    showGameDialog(
-      context: context,
-      builder: (_) => ShopDialog(
-        onUpdated: () {
-          if (mounted) setState(() {});
-        },
-      ),
+    _openShop();
+  }
+
+  void _openDictionary([String? initialWord]) {
+    if (_controller == null) return;
+
+    // Only display words that the user has already found!
+    final solvedTargets = _controller!.level.targetWords
+        .map((tw) => tw.word.toUpperCase())
+        .where((w) => _controller!.solvedTargetWords.contains(w))
+        .toList();
+    final extraWords = _controller!.foundExtraWords
+        .map((w) => w.toUpperCase())
+        .toList();
+
+    final foundWords = {...solvedTargets, ...extraWords}.toList();
+
+    if (foundWords.isEmpty) {
+      AudioManager.playTileSelect(pitchIndex: 2);
+      _controller?.showFeedback(
+        AppLocalization.tr('find_words_first'),
+        const Color(0xFFFFD54F),
+      );
+      return;
+    }
+
+    DictionaryDialog.show(
+      context,
+      words: foundWords,
+      initialWord: initialWord,
+      language: widget.language,
     );
   }
 
@@ -606,18 +634,40 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                     child: TargetWordsBar(
                                       key: _targetWordsKey,
                                       controller: _controller!,
+                                      onWordTap: (word) {
+                                        if (RemoteConfigService.isDictionaryAvailableForLevel(_controller!.levelNumber)) {
+                                          _openDictionary(word);
+                                        }
+                                      },
                                     ),
                                   ),
                                 ),
-                                // Left Gift Box Button (Hidden on Level 1 or when cheat hide UI is active)
-                                if (_controller!.levelNumber > 1 && !hideUI)
+                                // Left Side Utility Column: Gift Box Button on top, Remove Ads directly underneath
+                                if (!hideUI)
                                   Positioned(
                                     top: 8.h,
                                     left: 16.w,
                                     child: AnimatedOpacity(
                                       opacity: isDarkScrimTut ? 0.20 : 1.0,
                                       duration: const Duration(milliseconds: 250),
-                                      child: _buildGiftButton(),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: [
+                                          if (_controller!.levelNumber > 1)
+                                            _buildGiftButton(),
+                                          ValueListenableBuilder<bool>(
+                                            valueListenable: GameStorage.noAdsNotifier,
+                                            builder: (context, isPurchased, _) {
+                                              if (isPurchased) return const SizedBox.shrink();
+                                              return Padding(
+                                                padding: EdgeInsets.only(top: _controller!.levelNumber > 1 ? 6.h : 0),
+                                                child: _buildNoAdsIconButton(),
+                                              );
+                                            },
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 // Right Star / Extra Words Button (Only shown when Extra Words is unlocked and not hidden by cheat)
@@ -875,42 +925,38 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // 1. Left slot: Coin Capsule (Flex 3, left-aligned)
-                  Expanded(
-                    flex: 3,
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: shouldShowIcons
-                          ? _buildCoinCapsule()
-                          : const SizedBox.shrink(),
-                    ),
-                  ),
+                  // 1. Left slot: Coin Capsule (Intrinsic width, left-aligned)
+                  shouldShowIcons
+                      ? _buildCoinCapsule()
+                      : const SizedBox(width: 80),
 
-                  // 2. Center slot: Perfectly centered Level Text (Flex 4, center-aligned, FittedBox guarded)
+                  // 2. Center slot: Auto-flexing Level Text with FittedBox guard
                   Expanded(
-                    flex: 4,
                     child: Center(
                       child: GestureDetector(
                         onLongPress: _openSettings,
                         child: BouncyButton(
                           onTap: _openLevelSelect,
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              '${AppLocalization.tr('level').toUpperCase()} ${_controller?.levelNumber ?? widget.levelIndex + 1}',
-                              maxLines: 1,
-                              style: AppTypography.font(
-                                fontSize: 20.sp,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                                letterSpacing: 0.8,
-                                shadows: const [
-                                  Shadow(
-                                    color: Colors.black38,
-                                    offset: Offset(0, 1.5),
-                                    blurRadius: 4,
-                                  ),
-                                ],
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 4.w),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                '${AppLocalization.tr('level').toUpperCase()} ${_controller?.levelNumber ?? widget.levelIndex + 1}',
+                                maxLines: 1,
+                                style: AppTypography.font(
+                                  fontSize: 19.sp,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                  letterSpacing: 0.8,
+                                  shadows: const [
+                                    Shadow(
+                                      color: Colors.black38,
+                                      offset: Offset(0, 1.5),
+                                      blurRadius: 4,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -919,77 +965,106 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     ),
                   ),
 
-                  // 3. Right slot: No Ads + Settings Buttons (Flex 3, right-aligned)
-                  Expanded(
-                    flex: 3,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: shouldShowIcons
-                          ? Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                ValueListenableBuilder<bool>(
-                                  valueListenable: GameStorage.noAdsNotifier,
-                                  builder: (context, isPurchased, _) {
-                                    if (isPurchased) return const SizedBox.shrink();
-                                    return Padding(
-                                      padding: EdgeInsets.only(right: 8.w),
-                                      child: BouncyButton(
-                                        onTap: () {
-                                          AudioManager.playTileSelect(pitchIndex: 4);
-                                          RemoveAdsDialog.show(
-                                            context,
-                                            level: _controller?.levelNumber ?? (widget.levelIndex + 1),
-                                            location: 'ingame_icon',
-                                            onClosed: () {
-                                              if (mounted) setState(() {});
-                                            },
-                                          );
-                                        },
-                                        child: Container(
-                                          width: 40.r,
-                                          height: 40.r,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: const Color(0xFF1E2846).withValues(alpha: 0.5),
-                                            border: Border.all(color: Colors.white, width: 1.8),
-                                            boxShadow: const [
-                                              BoxShadow(
-                                                color: Color(0x38000000),
-                                                offset: Offset(0, 2),
-                                                blurRadius: 4,
-                                              ),
-                                            ],
-                                          ),
-                                          padding: EdgeInsets.all(4.r),
-                                          child: Image.asset(
-                                            'assets/images/img_remove_ads.png',
-                                            fit: BoxFit.contain,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                BouncyButton(
-                                  onTap: _openSettings,
-                                  child: Image.asset(
-                                    'assets/icons/icon_setting.webp',
-                                    width: 40.r,
-                                    height: 40.r,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                  ),
+                  // 3. Right slot: Dictionary + Settings Buttons (Intrinsic width, right-aligned)
+                  shouldShowIcons
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_controller != null &&
+                                RemoteConfigService.isDictionaryAvailableForLevel(_controller!.levelNumber))
+                              Padding(
+                                padding: EdgeInsets.only(right: 6.w),
+                                child: _buildDictionaryButton(),
+                              ),
+                            _buildSettingsButton(),
+                          ],
+                        )
+                      : const SizedBox(width: 80),
                 ],
               ),
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildDictionaryButton() {
+    return BouncyButton(
+      onTap: () {
+        AudioManager.playTileSelect(pitchIndex: 4);
+        _openDictionary();
+      },
+      child: Container(
+        width: 38.r,
+        height: 38.r,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFF1E2846).withValues(alpha: 0.5),
+          border: Border.all(color: Colors.white, width: 1.8),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x38000000),
+              offset: Offset(0, 2),
+              blurRadius: 4,
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: const Icon(
+          Icons.menu_book_rounded,
+          color: Colors.white,
+          size: 19,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsButton() {
+    return BouncyButton(
+      onTap: _openSettings,
+      child: Image.asset(
+        'assets/icons/icon_setting.webp',
+        width: 38.r,
+        height: 38.r,
+      ),
+    );
+  }
+
+  Widget _buildNoAdsIconButton() {
+    return BouncyButton(
+      onTap: () {
+        AudioManager.playTileSelect(pitchIndex: 4);
+        RemoveAdsDialog.show(
+          context,
+          level: _controller?.levelNumber ?? (widget.levelIndex + 1),
+          location: 'ingame_icon',
+          onClosed: () {
+            if (mounted) setState(() {});
+          },
+        );
+      },
+      child: Container(
+        width: 44.r,
+        height: 44.r,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFF1E2846).withValues(alpha: 0.5),
+          border: Border.all(color: Colors.white, width: 2.0),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x38000000),
+              offset: Offset(0, 2),
+              blurRadius: 4,
+            ),
+          ],
+        ),
+        padding: EdgeInsets.all(5.r),
+        child: Image.asset(
+          'assets/images/img_remove_ads.png',
+          fit: BoxFit.contain,
+        ),
+      ),
     );
   }
 

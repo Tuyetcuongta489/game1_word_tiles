@@ -1,96 +1,34 @@
-{
+﻿{
   "id": 18,
   "width": 3,
   "height": 3,
   "target_words": [
     {
-      "word": "ITS",
+      "word": "OUR",
       "type": 0
     },
     {
-      "word": "NOW",
+      "word": "THE",
       "type": 0
     },
     {
-      "word": "TWO",
+      "word": "URN",
       "type": 0
     },
     {
-      "word": "WIN",
+      "word": "HURT",
       "type": 0
     },
     {
-      "word": "SNOW",
+      "word": "RUIN",
+      "type": 0
+    },
+    {
+      "word": "TOUR",
       "type": 0
     }
   ],
-  "extra_words": [
-    {
-      "word": "INS",
-      "type": 0
-    },
-    {
-      "word": "NIT",
-      "type": 0
-    },
-    {
-      "word": "ONS",
-      "type": 0
-    },
-    {
-      "word": "TIN",
-      "type": 0
-    },
-    {
-      "word": "WIT",
-      "type": 0
-    },
-    {
-      "word": "WON",
-      "type": 0
-    },
-    {
-      "word": "NITS",
-      "type": 0
-    },
-    {
-      "word": "NOWT",
-      "type": 0
-    },
-    {
-      "word": "SNIT",
-      "type": 0
-    },
-    {
-      "word": "TINS",
-      "type": 0
-    },
-    {
-      "word": "WINS",
-      "type": 0
-    },
-    {
-      "word": "WITS",
-      "type": 0
-    },
-    {
-      "word": "WONS",
-      "type": 0
-    },
-    {
-      "word": "WONT",
-      "type": 0
-    },
-    {
-      "word": "NOWTS",
-      "type": 0
-    },
-    {
-      "word": "WONTS",
-      "type": 0
-    }
-  ],
-  "letters": "OWW,NTI,SSN",
-  "counts": "331,222,111",
+  "extra_words": [],
+  "letters": "TRN,OUI,THE",
   "obstacles": []
 }

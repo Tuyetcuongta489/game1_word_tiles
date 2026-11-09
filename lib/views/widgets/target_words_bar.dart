@@ -10,8 +10,13 @@ import '../../services/game_storage.dart';
 
 class TargetWordsBar extends StatefulWidget {
   final GameController controller;
+  final void Function(String word)? onWordTap;
 
-  const TargetWordsBar({super.key, required this.controller});
+  const TargetWordsBar({
+    super.key,
+    required this.controller,
+    this.onWordTap,
+  });
 
   @override
   State<TargetWordsBar> createState() => TargetWordsBarState();
@@ -124,12 +129,16 @@ class TargetWordsBarState extends State<TargetWordsBar> {
 
                   return Padding(
                     padding: EdgeInsets.symmetric(vertical: vGap / 2),
-                    child: _TargetWordRow(
-                      targetWord: tw,
-                      isSolved: isSolved,
-                      isTutorialTarget: isTutorialTarget,
-                      boxSize: boxSize,
-                      chapterTheme: controller.chapterTheme,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: isSolved ? () => widget.onWordTap?.call(tw.word) : null,
+                      child: _TargetWordRow(
+                        targetWord: tw,
+                        isSolved: isSolved,
+                        isTutorialTarget: isTutorialTarget,
+                        boxSize: boxSize,
+                        chapterTheme: controller.chapterTheme,
+                      ),
                     ),
                   );
                 }).toList(),

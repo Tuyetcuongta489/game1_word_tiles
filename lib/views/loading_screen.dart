@@ -13,6 +13,7 @@ import '../services/audio_manager.dart';
 import '../services/chapter_loader.dart';
 import '../services/game_storage.dart';
 import '../services/iap_manager.dart';
+import '../services/notification_service.dart';
 import '../services/remote_config_service.dart';
 import 'home_screen.dart';
 import 'first_language_screen.dart';
@@ -36,6 +37,7 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
 
   @override
   void dispose() {
+    AdsManager.setSplashInProgress(false);
     _progressTimer?.cancel();
     super.dispose();
   }
@@ -43,6 +45,19 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
   Future<void> _startLoadingPipeline() async {
     final startTime = DateTime.now();
     bool initFinished = false;
+    final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
+
+    // Prevent AppLifecycleState.resumed (triggered by iOS Notification / ATT permission dialogs)
+    // from firing a premature Resume AOA ad while LoadingScreen is still running.
+    AdsManager.setSplashInProgress(true);
+
+    // Register FGSDK ad & remote config stream listeners BEFORE any FGSDK method call
+    // opens the native EventChannel so buffered early ad-loaded events are never dropped.
+    if (!isTest) {
+      try {
+        AdsManager.init();
+      } catch (_) {}
+    }
 
     // 1. Start smooth visual progress
     _progressTimer = Timer.periodic(const Duration(milliseconds: 25), (timer) {
@@ -66,12 +81,12 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
       });
     });
 
-    AnalyticsService.logLoadingStart(placement: 'splash');
-
-    // 2. Perform async initializations
+    // 2. Perform async initializations (GameStorage first so AnalyticsService can read prefs)
     try {
       await GameStorage.init();
+      AnalyticsService.logLoadingStart(placement: 'splash');
       await ChapterLoader.init();
+      await NotificationService.init();
       AnalyticsService.updateUserProperties();
       if (GameStorage.isFirstSession()) {
         AnalyticsService.logTutorial(name: 'ftue_loading_start', value: 1);
@@ -88,7 +103,6 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
     // 1. The Consent popup is presented and completed over the LoadingScreen.
     // 2. The user has finished tapping consent before entering GameScreen.
     // 3. Early game tracking events (level_start, FTUE tutorials) are not lost or blocked.
-    final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
     if (!isTest && !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS)) {
       final consentWaitStart = DateTime.now();
       while (!await FGSDK.isInit()) {
@@ -102,10 +116,10 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
       }
     }
 
-    // Initialize AdsManager & RemoteConfig once SDK & Consent are ready
+    // Refresh RemoteConfig & preload Rewarded once SDK & Consent are ready
     if (!isTest) {
       try {
-        AdsManager.init();
+        AdsManager.preloadRewarded();
         // Wait for Remote Config to be ready from cloud if possible (max 1500ms)
         final rcStartTime = DateTime.now();
         while (!await FGSDK.isRemoteConfigReady() &&
@@ -121,7 +135,15 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
       unawaited(IapManager.init());
     } catch (_) {}
 
-    // Mark init as finished so timer drives progress to 100%
+    final isFirstSession = GameStorage.isFirstSession();
+
+    // Show Splash ad for returning sessions WHILE loading (at ~88%)
+    // Wait up to 4000ms for cold-start network download (typically ~2.2s on iOS/Android).
+    if (!isFirstSession && !GameStorage.isNoAdsPurchased() && !isTest) {
+      await AdsManager.showSplashAd(timeoutMs: 4000);
+    }
+
+    // Mark init as finished so timer drives progress smoothly to 100%
     initFinished = true;
 
     // Wait until progress actually completes to 100%
@@ -140,16 +162,16 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
 
     final loadDuration = DateTime.now().difference(startTime).inMilliseconds / 1000.0;
     AnalyticsService.logLoadingFinish(placement: 'splash', success: true, value: loadDuration);
-    if (GameStorage.isFirstSession()) {
+    if (isFirstSession) {
       AnalyticsService.logTutorial(name: 'ftue_loading_end', value: 2);
     }
 
-    // Brief pause at 100% so user clearly registers 100% before transition
-    await Future.delayed(const Duration(milliseconds: 250));
+    // Brief 120ms visual confirmation of 100% then immediately navigate
+    await Future.delayed(const Duration(milliseconds: 120));
 
+    AdsManager.setSplashInProgress(false);
     if (!mounted) return;
     final nav = Navigator.of(context);
-    final isFirstSession = GameStorage.isFirstSession();
 
     if (isFirstSession) {
       nav.pushReplacement(
@@ -253,12 +275,12 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
 
                 // Sleek Capsule Progress Bar with Percentage
                 Container(
-                  width: 246.w,
-                  height: 22.h,
+                  width: 250.w,
+                  height: 28.h,
                   padding: EdgeInsets.all(2.5.r),
                   decoration: BoxDecoration(
                     color: const Color(0xFF2C2D38),
-                    borderRadius: BorderRadius.circular(11.r),
+                    borderRadius: BorderRadius.circular(14.r),
                     border: Border.all(
                       color: const Color(0xFFF3ECE4),
                       width: 2.5,
@@ -273,6 +295,7 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
                   ),
                   child: Stack(
                     alignment: Alignment.center,
+                    clipBehavior: Clip.none,
                     children: [
                       LayoutBuilder(
                         builder: (context, constraints) {
@@ -284,7 +307,7 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
                               width: barW,
                               height: double.infinity,
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(7.r),
+                                borderRadius: BorderRadius.circular(10.r),
                                 gradient: const LinearGradient(
                                   colors: [
                                     Color(0xFF5FE86D), // bright top lime highlight
@@ -308,9 +331,16 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
                       // Centered percentage inside the progress capsule
                       Text(
                         '${(_progress.clamp(0.0, 1.0) * 100).toInt()}%',
+                        textScaler: TextScaler.noScaling,
+                        strutStyle: StrutStyle(
+                          fontSize: 12.5.sp,
+                          height: 1.0,
+                          forceStrutHeight: true,
+                        ),
                         style: AppTypography.font(
-                          fontSize: 12.sp,
+                          fontSize: 12.5.sp,
                           fontWeight: FontWeight.w900,
+                          height: 1.0,
                           color: Colors.white,
                           letterSpacing: 0.5,
                           shadows: const [

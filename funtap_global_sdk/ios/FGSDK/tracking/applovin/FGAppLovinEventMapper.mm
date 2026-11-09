@@ -77,7 +77,8 @@ static FGTrackingEvent *FGAL(NSString *name, FGParams _Nullable params) {
         NSString *type = FGStrParam(p, @"type") ?: FGStrParam(p, @"item_type");
         if ([type isEqualToString:@"booster"]) [out addObject:FGAL(@"use_prop", nil)];
     } else if ([name isEqualToString:@"tut_action"]) {
-        if ([FGStrParam(p, @"name") isEqualToString:@"success"])
+        NSString *actionName = FGStrParam(p, @"name");
+        if ([actionName isEqualToString:@"success"] || [actionName isEqualToString:@"tut_finish"])
             [out addObject:FGAL(@"tutorial_complete", nil)];
     } else if ([name isEqualToString:FGConstValue.InitSDK]) {
         [out addObject:FGAL(@"app_open", nil)];

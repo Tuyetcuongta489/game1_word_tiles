@@ -1,88 +1,47 @@
-{
+﻿{
   "id": 15,
   "width": 4,
   "height": 3,
   "target_words": [
     {
-      "word": "AND",
+      "word": "LIP",
       "type": 0
     },
     {
-      "word": "USE",
+      "word": "PIN",
       "type": 0
     },
     {
-      "word": "HAND",
+      "word": "RIG",
       "type": 0
     },
     {
-      "word": "STAY",
+      "word": "TIN",
       "type": 0
     },
     {
-      "word": "THAN",
+      "word": "GIRL",
       "type": 0
     },
     {
-      "word": "USED",
+      "word": "RIOT",
+      "type": 0
+    },
+    {
+      "word": "PIVOT",
       "type": 0
     }
   ],
   "extra_words": [
     {
-      "word": "ANA",
+      "word": "NIP",
       "type": 0
     },
     {
-      "word": "EAT",
-      "type": 0
-    },
-    {
-      "word": "EAU",
-      "type": 0
-    },
-    {
-      "word": "EDH",
-      "type": 0
-    },
-    {
-      "word": "NAE",
-      "type": 0
-    },
-    {
-      "word": "NAH",
-      "type": 0
-    },
-    {
-      "word": "SEA",
-      "type": 0
-    },
-    {
-      "word": "TAE",
-      "type": 0
-    },
-    {
-      "word": "DEAN",
-      "type": 0
-    },
-    {
-      "word": "EATS",
-      "type": 0
-    },
-    {
-      "word": "SEAT",
-      "type": 0
-    },
-    {
-      "word": "HANDY",
-      "type": 0
-    },
-    {
-      "word": "NAUSEA",
+      "word": "NIT",
       "type": 0
     }
   ],
-  "letters": "UANA,SEDH,TAYT",
-  "counts": "2132,3232,1111",
+  "letters": "IPIN,LGVI,RIOT",
   "obstacles": []
 }

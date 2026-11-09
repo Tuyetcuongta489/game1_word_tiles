@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../models/iap_product_model.dart';
+import '../services/ads_manager.dart';
 import '../services/audio_manager.dart';
 import '../services/app_localization.dart';
 import '../services/game_storage.dart';
@@ -33,6 +34,9 @@ class _ShopScreenState extends State<ShopScreen> {
     IapManager.refreshPrices();
     IapManager.pricesVersion.addListener(_onPricesUpdated);
     IapManager.logShopImpression(level: widget.currentLevel);
+    if (!GameStorage.isNoAdsPurchased()) {
+      AdsManager.showBanner('shop_bottom', level: widget.currentLevel);
+    }
   }
 
   void _onPricesUpdated() {
@@ -76,6 +80,7 @@ class _ShopScreenState extends State<ShopScreen> {
   Widget build(BuildContext context) {
     final topInset = MediaQuery.paddingOf(context).top;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final isNoAds = GameStorage.isNoAdsPurchased();
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A2B78),
@@ -112,7 +117,12 @@ class _ShopScreenState extends State<ShopScreen> {
                   return ListView(
                     controller: _scrollController,
                     physics: const BouncingScrollPhysics(),
-                    padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, bottomInset + 24.h),
+                    padding: EdgeInsets.fromLTRB(
+                      16.w,
+                      4.h,
+                      16.w,
+                      bottomInset + (isNoAds ? 24.h : 70.h),
+                    ),
                     children: [
                       // ══════════════════════════════════════════════════════
                       // SECTION 1: SPECIAL OFFERS & BUNDLES

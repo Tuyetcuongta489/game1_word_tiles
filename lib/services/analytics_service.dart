@@ -596,9 +596,6 @@ class AnalyticsService {
     try {
       debugPrint('[Analytics] tut_action: name=$name, value=$value');
       FGSDK.logTutorial(name, value.toString(), extra: {'name': name, 'value': value});
-      if (name == 'tut_finish') {
-        FGSDK.logTutorial('success', '1');
-      }
       _logToFirebase('tut_action', {
         'name': name,
         'value': value,

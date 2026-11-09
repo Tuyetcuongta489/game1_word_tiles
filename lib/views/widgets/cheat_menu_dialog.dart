@@ -11,6 +11,10 @@ import '../../services/audio_manager.dart';
 import '../../services/game_storage.dart';
 import '../../services/level_loader.dart';
 import '../../services/remote_config_service.dart';
+import '../../services/daily_login_service.dart';
+import 'daily_login_dialog.dart';
+import 'dictionary_dialog.dart';
+import '../../services/notification_service.dart';
 import 'package:funtap_global_sdk/funtap_global_sdk.dart';
 
 class CheatMenuDialog extends StatefulWidget {
@@ -189,9 +193,13 @@ class _CheatMenuDialogState extends State<CheatMenuDialog> {
                       SizedBox(height: 16.h),
 
                       // --- Section 4: Extra Words & Daily Gift ---
-                      _buildSectionTitle('🎁 REWARDS & CHESTS (Extra: $extraCount/10)'),
+                      _buildSectionTitle('🎁 REWARDS & RETENTION (Extra: $extraCount/10)'),
                       SizedBox(height: 8.h),
                       _buildRewardsRow(),
+                      SizedBox(height: 8.h),
+                      _buildDailyLoginAndDictionaryRow(),
+                      SizedBox(height: 8.h),
+                      _buildNotificationTestingRow(),
                       SizedBox(height: 16.h),
 
                       // --- Section 5: Progression & Reset ---
@@ -579,12 +587,78 @@ class _CheatMenuDialogState extends State<CheatMenuDialog> {
         SizedBox(width: 8.w),
         Expanded(
           child: _buildActionButton(
-            label: 'Reset Daily Gift 🎁',
+            label: 'Reset Daily Streak 📅',
             color: const Color(0xFFEC4899),
             onTap: () async {
-              await GameStorage.resetDailyGiftCooldown();
+              await DailyLoginService.resetStreakForTest();
               _notifyUpdate();
-              _showFeedbackToast('Daily Gift cooldown cleared! Ready to claim.');
+              _showFeedbackToast('Daily Login Streak reset! Ready to claim Day 1.');
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDailyLoginAndDictionaryRow() {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildActionButton(
+            label: 'Daily Login Popup 🎁',
+            color: const Color(0xFFEAB308),
+            onTap: () {
+              Navigator.of(context).pop();
+              DailyLoginDialog.show(
+                 context,
+                level: widget.controller?.levelNumber ?? 1,
+                onRewardClaimed: _notifyUpdate,
+              );
+            },
+          ),
+        ),
+        SizedBox(width: 8.w),
+        Expanded(
+          child: _buildActionButton(
+            label: 'Open Dictionary 📖',
+            color: const Color(0xFF0284C7),
+            onTap: () {
+              Navigator.of(context).pop();
+              DictionaryDialog.show(
+                context,
+                words: widget.controller != null
+                    ? widget.controller!.level.targetWords.map((tw) => tw.word).toList()
+                    : const ['CAT', 'DOG', 'PEN', 'HELLO'],
+                language: widget.controller?.language ?? 'en',
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNotificationTestingRow() {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildActionButton(
+            label: 'Test Push Noti 🔔',
+            color: const Color(0xFF8B5CF6),
+            onTap: () async {
+              await NotificationService.showTestNotification();
+              _showFeedbackToast('Đã bắn thông báo thử nghiệm tức thì!');
+            },
+          ),
+        ),
+        SizedBox(width: 8.w),
+        Expanded(
+          child: _buildActionButton(
+            label: 'Schedule Noti 5s ⏳',
+            color: const Color(0xFF6366F1),
+            onTap: () async {
+              await NotificationService.scheduleTestNotification(seconds: 5);
+              _showFeedbackToast('Đã hẹn giờ sau 5s! Hãy thoát app/minimize để xem.');
             },
           ),
         ),

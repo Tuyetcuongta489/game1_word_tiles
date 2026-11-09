@@ -16,7 +16,9 @@ import '../../utils/game_transitions.dart';
 import '../widgets/bouncy_button.dart';
 import '../shop_screen.dart';
 import 'remove_ads_dialog.dart';
+import 'dictionary_dialog.dart';
 import '../../services/no_ads_trigger_service.dart';
+import '../../services/remote_config_service.dart';
 
 enum VictoryStep {
   congrats,
@@ -981,7 +983,56 @@ class _VictoryOverlayState extends State<VictoryOverlay>
           ),
         ).animate().fadeIn(duration: 400.ms, delay: 350.ms),
 
-        const Spacer(flex: 2),
+        const Spacer(flex: 1),
+
+        if (RemoteConfigService.isDictionaryAvailableForLevel(widget.controller.levelNumber))
+          Padding(
+            padding: EdgeInsets.only(bottom: 4.h),
+            child: BouncyButton(
+              onTap: () {
+                AudioManager.playTileSelect(pitchIndex: 4);
+                final solvedTargets = widget.controller.level.targetWords
+                    .map((tw) => tw.word.toUpperCase())
+                    .where((w) => widget.controller.solvedTargetWords.contains(w))
+                    .toList();
+                final extraWords = widget.controller.foundExtraWords
+                    .map((w) => w.toUpperCase())
+                    .toList();
+                final foundWords = {...solvedTargets, ...extraWords}.toList();
+
+                DictionaryDialog.show(
+                  context,
+                  words: foundWords,
+                  language: widget.controller.language,
+                );
+              },
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 7.h),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(16.r),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.35), width: 1.2),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.menu_book_rounded, color: Colors.white, size: 16),
+                    SizedBox(width: 6.w),
+                    Text(
+                      'Word Meanings 📖',
+                      style: AppTypography.font(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ).animate().fadeIn(duration: 350.ms, delay: 400.ms),
+
+        const Spacer(flex: 1),
 
         Builder(
           builder: (context) {
